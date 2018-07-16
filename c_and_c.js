@@ -375,7 +375,11 @@ class CommandAndControl {
     setEventTimer(eventId, dateString) {
         console.log("setEventTimer: eventId: " + eventId + " date: " + dateString);
         if(this.timers[eventId]) {
-            console.log("Timer already set for event: " + eventId);
+            console.log("Timer already set for event on setEventTimer: " + eventId);
+            return false;
+        }
+        if(!dateString || dateString === "") {
+            console.log("Invalid dateString on setEventTimer: " + dateString);
             return false;
         }
         var date = Moment(dateString);
