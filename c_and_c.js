@@ -8,6 +8,8 @@ const Path = require('path');
 class CommandAndControl {
     constructor(robot) {
         this.robot = robot;
+        this.timers = {};
+        this.overrideCallbacks = {};
 
         this.token = process.env.HUBOT_COMMAND_AND_CONTROL_TOKEN || "TEST_TOKEN";
         this.scheduleFile = process.env.HUBOT_ALTERDESK_SCHEDULE_FILE || Path.join(process.cwd(), 'schedule.json');
@@ -153,19 +155,22 @@ class CommandAndControl {
             }
         });
 
-        this.timers = {};
         this.schedule;
-        if (FileSystem.existsSync(this.scheduleFile)) {
-            this.schedule = JSON.parse(FileSystem.readFileSync(this.scheduleFile));
-            console.log("Loaded schedule:", this.schedule);
-            var eventIds = Object.keys(this.schedule);
-            if(eventIds) {
-                for(var index in eventIds) {
-                    var eventId = eventIds[index];
-                    var event = this.schedule[eventId];
-                    this.setEventTimer(eventId, event["date"]);
+        try {
+            if (FileSystem.existsSync(this.scheduleFile)) {
+                this.schedule = JSON.parse(FileSystem.readFileSync(this.scheduleFile));
+                console.log("Loaded schedule:", this.schedule);
+                var eventIds = Object.keys(this.schedule);
+                if(eventIds) {
+                    for(var index in eventIds) {
+                        var eventId = eventIds[index];
+                        var event = this.schedule[eventId];
+                        this.setEventTimer(eventId, event["date"]);
+                    }
                 }
             }
+        } catch(error) {
+            console.error(error);
         }
         if(!this.schedule) {
             this.schedule = {};
@@ -283,13 +288,22 @@ class CommandAndControl {
 
     executeCommand(userId, chatId, isGroup, command, answers) {
         console.log("executeCommand: userId: " + userId + " chatId: " + chatId + " isGroup: " + isGroup + " command: " + command + " answers: ", answers);
+        var callback = this.overrideCallbacks[command];
+        if(callback) {
+            callback(userId, chatId, isGroup, answers);
+            return;
+        }
         var user = new User(userId);
         user.is_groupchat = isGroup;
         var textMessage = new TextMessage(user);
         textMessage.room = chatId;
         textMessage.text = command;
         textMessage.answers = answers;
-        this.robot.defaultRobotReceiver(textMessage);
+        if(this.robot.defaultRobotReceiver) {
+            this.robot.defaultRobotReceiver(textMessage);
+        } else {
+            this.robot.receive(textMessage);
+        }
     }
 
     getJsonError(errorText) {
@@ -328,7 +342,7 @@ class CommandAndControl {
             this.executeEvent(eventId);
             return false;
         }
-        console.log("Event timer set: eventId: " + eventId + " ms: " ms);
+        console.log("Event timer set: eventId: " + eventId + " ms: " + ms);
         this.timers[eventId] = setTimeout(() => {
             this.executeEvent(eventId);
         }, ms);
@@ -372,6 +386,10 @@ class CommandAndControl {
                 }
             });
         }
+    }
+
+    setOverrideCallback(command, callback) {
+        this.overrideCallbacks[command] = callback;
     }
 };
 
