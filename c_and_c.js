@@ -264,7 +264,8 @@ class CommandAndControl {
     }
 
     scheduleEvent(chatId, isGroup, userId, command, date, answers) {
-        console.log("scheduleEvent: chatId: " + chatId + " isGroup: " + isGroup + " userId: " + userId + " command: " + command + " date: " + date + " answers:", answers);
+        console.log("scheduleEvent: chatId: " + chatId + " isGroup: " + isGroup + " userId: " + userId
+            + " command: " + command + " date: " + date + " answers:", answers);
 
         var event = {};
         event["chat_id"] = chatId;
@@ -285,6 +286,9 @@ class CommandAndControl {
     }
 
     scheduleEventInMs(chatId, isGroup, userId, command, ms, answers) {
+        console.log("scheduleEventInMs: chatId: " + chatId + " isGroup: " + isGroup + " userId: " + userId
+            + " command: " + command + " ms: " + ms + " answers:", answers);
+
         var date = Moment(Date.now() + ms);
         this.scheduleEvent(chatId, isGroup, userId, command, date, answers);
     }
@@ -324,7 +328,9 @@ class CommandAndControl {
     }
 
     executeCommand(userId, chatId, isGroup, command, answers) {
-        console.log("executeCommand: userId: " + userId + " chatId: " + chatId + " isGroup: " + isGroup + " command: " + command + " answers: ", answers);
+        console.log("executeCommand: userId: " + userId + " chatId: " + chatId + " isGroup: " + isGroup
+            + " command: " + command + " answers: ", answers);
+
         var callback = this.overrideCallbacks[command];
         if(callback) {
             callback(userId, chatId, isGroup, answers);

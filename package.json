@@ -17,7 +17,7 @@
   },
   "homepage": "https://github.com/Alterdesk/hubot-command-and-control#readme",
   "dependencies": {
-    "hubot-questionnaire-framework": "../../hubot-questionnaire-framework",
+    "hubot-questionnaire-framework": "https://github.com/Alterdesk/hubot-questionnaire-framework.git",
     "hubot": "^2.19.0",
     "moment": "^2.20.1",
     "uuid": "^3.2.1"
