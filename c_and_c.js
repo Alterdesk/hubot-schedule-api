@@ -12,21 +12,21 @@ class CommandAndControl {
         this.overrideCallbacks = {};
 
         this.token = process.env.HUBOT_COMMAND_AND_CONTROL_TOKEN || "TEST_TOKEN";
-        this.scheduleFile = process.env.HUBOT_ALTERDESK_SCHEDULE_FILE || Path.join(process.cwd(), 'schedule.json');
+        this.scheduleFilePath = process.env.HUBOT_ALTERDESK_SCHEDULE_FILE || Path.join(process.cwd(), 'schedule.json');
 
-        robot.router.get("/conversations/:chat_id/schedule/:event_id", (req, res) => {this.getSchedule(req, res)});
-        robot.router.get("/groupchats/:chat_id/schedule/:event_id", (req, res) => {this.getSchedule(req, res)});
-        robot.router.delete("/conversations/:chat_id/schedule/:event_id", (req, res) => {this.deleteSchedule(req, res)});
-        robot.router.delete("/groupchats/:chat_id/schedule/:event_id", (req, res) => {this.deleteSchedule(req, res)});
-        robot.router.post("/conversations/:chat_id/schedule", (req, res) => {this.postSchedule(req, res)});
-        robot.router.post("/groupchats/:chat_id/schedule", (req, res) => {this.postSchedule(req, res)});
+        robot.router.get("/conversations/:chat_id/schedule/:event_id", (req, res) => {this.getEvent(req, res)});
+        robot.router.get("/groupchats/:chat_id/schedule/:event_id", (req, res) => {this.getEvent(req, res)});
+        robot.router.delete("/conversations/:chat_id/schedule/:event_id", (req, res) => {this.deleteEvent(req, res)});
+        robot.router.delete("/groupchats/:chat_id/schedule/:event_id", (req, res) => {this.deleteEvent(req, res)});
+        robot.router.post("/conversations/:chat_id/schedule", (req, res) => {this.postEvent(req, res)});
+        robot.router.post("/groupchats/:chat_id/schedule", (req, res) => {this.postEvent(req, res)});
         robot.router.post("/conversations/:chat_id/trigger", (req, res) => {this.postTrigger(req, res)});
         robot.router.post("/groupchats/:chat_id/trigger", (req, res) => {this.postTrigger(req, res)});
 
         this.schedule;
         try {
-            if (FileSystem.existsSync(this.scheduleFile)) {
-                this.schedule = JSON.parse(FileSystem.readFileSync(this.scheduleFile));
+            if (FileSystem.existsSync(this.scheduleFilePath)) {
+                this.schedule = JSON.parse(FileSystem.readFileSync(this.scheduleFilePath));
                 console.log("Loaded schedule:", this.schedule);
                 var eventIds = Object.keys(this.schedule);
                 if(eventIds) {
@@ -45,62 +45,60 @@ class CommandAndControl {
         }
     }
 
-    getSchedule(req, res) {
+    getEvent(req, res) {
         try {
             if(!this.checkRequest(req, res)) {
                 return;
             }
             var chatId = req.params.chat_id;
             if(!chatId) {
-                console.error("Invalid chat id on getSchedule");
-                res.send(this.getJsonError("Invalid chat id"));
+                console.error("Invalid chat id on getEvent");
+                this.respondRequest(req, res, 400, this.getJsonError("Invalid chat id"));
                 return;
             }
             var eventId = req.params.event_id;
             if(!chatId) {
-                console.error("Invalid event id on getSchedule");
-                res.send(this.getJsonError("Invalid event id"));
+                console.error("Invalid event id on getEvent");
+                this.respondRequest(req, res, 400, this.getJsonError("Invalid event id"));
                 return;
             }
             var isGroup = req.url.startsWith("/groupchats");
 
-            var event = this.getEvent(chatId, isGroup, eventId);
-
+            var event = this.getScheduledEvent(chatId, isGroup, eventId);
             if(!event) {
-                res.send(this.getJsonError("Unable to get event"));
+                this.respondRequest(req, res, 404, this.getJsonError("Event not found"));
                 return;
             }
 
-            res.send(JSON.stringify(event));
+            this.respondRequest(req, res, 200, JSON.stringify(event));
         } catch(error) {
             console.error(error);
-            res.send(this.getJsonError("Schedule error"));
+            this.respondRequest(req, res, 500, this.getJsonError("Get scheduled event error"));
         }
     }
 
-    deleteSchedule(req, res) {
+    deleteEvent(req, res) {
         try {
             if(!this.checkRequest(req, res)) {
                 return;
             }
             var chatId = req.params.chat_id;
             if(!chatId) {
-                console.error("Invalid chat id on deleteSchedule");
-                res.send(this.getJsonError("Invalid chat id"));
+                console.error("Invalid chat id on deleteEvent");
+                this.respondRequest(req, res, 400, this.getJsonError("Invalid chat id"));
                 return;
             }
             var eventId = req.params.event_id;
             if(!chatId) {
-                console.error("Invalid event id on deleteSchedule");
-                res.send(this.getJsonError("Invalid event id"));
+                console.error("Invalid event id on deleteEvent");
+                this.respondRequest(req, res, 400, this.getJsonError("Invalid event id"));
                 return;
             }
             var isGroup = req.url.startsWith("/groupchats");
 
-            var event = this.getEvent(chatId, isGroup, eventId);
-
+            var event = this.getScheduledEvent(chatId, isGroup, eventId);
             if(!event) {
-                res.send(this.getJsonError("Unable to delete event"));
+                this.respondRequest(req, res, 404, this.getJsonError("Event not found"));
                 return;
             }
 
@@ -108,46 +106,56 @@ class CommandAndControl {
 
             var result = {};
             result["success"] = true;
-
-            res.send(JSON.stringify(result));
+            this.respondRequest(req, res, 200, JSON.stringify(result));
         } catch(error) {
             console.error(error);
-            res.send(this.getJsonError("Schedule error"));
+            this.respondRequest(req, res, 500, this.getJsonError("Delete scheduled event error"));
         }
     }
 
-    postSchedule(req, res) {
+    postEvent(req, res) {
         try {
             if(!this.checkRequest(req, res)) {
                 return;
             }
             var chatId = req.params.chat_id;
             if(!chatId) {
-                console.error("Invalid chat id on postSchedule");
-                res.send(this.getJsonError("Invalid chat id"));
+                console.error("Invalid chat id on postEvent");
+                this.respondRequest(req, res, 400, this.getJsonError("Invalid chat id"));
                 return;
             }
             var body = req.body;
             if(!body) {
-                res.send(this.getJsonError("Invalid body on postSchedule"));
+                this.respondRequest(req, res, 400, this.getJsonError("Invalid body on postEvent"));
                 return;
             }
             var isGroup = req.url.startsWith("/groupchats");
-
-            var eventId  = this.setEvent(chatId, isGroup, body);
-
-            if(!eventId) {
-                res.send(this.getJsonError("Unable to schedule event"));
+            var userId = body["user_id"];
+            if(isGroup && (!userId || userId === "")) {
+                console.error("Invalid user id on setEvent: " + userId);
+                this.respondRequest(req, res, 400, this.getJsonError("Invalid user id"));
                 return;
             }
+            var date = body["date"];
+            if(!date || date === "") {
+                console.error("Invalid date on setEvent: " + date);
+                this.respondRequest(req, res, 400, this.getJsonError("Invalid date"));
+                return;
+            }
+            var command = body["command"];
+            if(!command || command === "") {
+                console.error("Invalid command on setEvent: " + command);
+                this.respondRequest(req, res, 400, this.getJsonError("Invalid command"));
+                return;
+            }
+            var answers = body["answers"];
 
             var result = {};
-            result["id"] = eventId;
-
-            res.send(JSON.stringify(result));
+            result["id"] = this.scheduleEvent(chatId, isGroup, userId, command, date, answers);
+            this.respondRequest(req, res, 201, JSON.stringify(result));
         } catch(error) {
             console.error(error);
-            res.send(this.getJsonError("Schedule error"));
+            this.respondRequest(req, res, 500, this.getJsonError("Schedule event error"));
         }
     }
 
@@ -159,30 +167,43 @@ class CommandAndControl {
             var chatId = req.params.chat_id;
             if(!chatId) {
                 console.error("Invalid chat id");
-                res.send(this.getJsonError("Invalid chat id"));
+                this.respondRequest(req, res, 400, this.getJsonError("Invalid chat id"));
                 return;
             }
             var body = req.body;
             if(!body) {
-                res.send(this.getJsonError("Invalid body"));
+                this.respondRequest(req, res, 400, this.getJsonError("Invalid body"));
                 return;
             }
             var isGroup = req.url.startsWith("/groupchats");
 
-            var triggered = this.trigger(chatId, isGroup, body);
-
-            if(!triggered) {
-                res.send(this.getJsonError("Unable to trigger"));
+            var userId;
+            if(isGroup) {
+                userId = bodu["user_id"]
+            } else {
+                userId = chatId;
+            }
+            if(!userId || userId === "") {
+                console.error("Invalid user id on trigger: " + userId);
+                this.respondRequest(req, res, 400, this.getJsonError("Invalid user id"));
                 return;
             }
+            var command = body["command"];
+            if(!command || command === "") {
+                console.error("Invalid command on error: " + command);
+                this.respondRequest(req, res, 400, this.getJsonError("Invalid command"));
+                return;
+            }
+            var answers = this.objectToAnswers(body["answers"]);
+            this.executeCommand(userId, chatId, isGroup, command, answers);
 
             var result = {};
-            result["success"] = triggered;
+            result["success"] = true;
 
-            res.send(JSON.stringify(result));
+            this.respondRequest(req, res, 200, JSON.stringify(result));
         } catch(error) {
             console.error(error);
-            res.send(this.getJsonError("Trigger error"));
+            this.respondRequest(req, res, 500, this.getJsonError("Trigger error"));
         }
     }
 
@@ -195,34 +216,43 @@ class CommandAndControl {
             console.error(this.getJsonError("Invalid response object"))
             return false;
         }
+        var requestText = "Command::" + req.method.toLowerCase() + "() << " + req.url + ":";
         if(req.body) {
-            console.log("Command::" + req.method + "() << " + req.url, req.body);
+            console.log(requestText, req.body);
         } else {
-            console.log("Command::" + req.method + "() << " + req.url);
+            console.log(requestText);
         }
         var params = req.params;
         if(!params) {
-            console.error("Invalid parameters");
-            res.send(this.getJsonError("Invalid parameters"));
+            this.respondRequest(req, res, 400, this.getJsonError("Invalid parameters"));
             return false;
         }
         var headers = req.headers;
         if(!headers) {
-            console.error("Invalid headers");
-            res.send(this.getJsonError("Invalid request headers"));
+            this.respondRequest(req, res, 400, this.getJsonError("Invalid request headers"));
             return false;
         }
         var token = headers["authorization"];
         if(token && this.token !== token) {
             console.error("Invalid command and control token: " + token);
-            res.send(this.getJsonError("Invalid authorization token"));
+            this.respondRequest(req, res, 403, this.getJsonError("Invalid authorization header"));
             return false;
         }
         return true;
     }
 
-    getEvent(chatId, isGroup, eventId) {
-        console.log("getEvent: chatId: " + chatId + " isGroup: " + isGroup + " eventId: " + eventId);
+    respondRequest(req, res, statusCode, body) {
+        console.log("Command::" + req.method.toLowerCase() + "() >> " + req.url + ": " + statusCode + ":", body);
+        if(res.status) {
+            res.status(statusCode);
+        } else {
+            res.statusCode = statusCode;
+        }
+        res.send(body);
+    }
+
+    getScheduledEvent(chatId, isGroup, eventId) {
+        console.log("getScheduledEvent: chatId: " + chatId + " isGroup: " + isGroup + " eventId: " + eventId);
         if(!this.schedule || !this.schedule[eventId]) {
             return null;
         }
@@ -233,25 +263,8 @@ class CommandAndControl {
         return event;
     }
 
-    setEvent(chatId, isGroup, json) {
-        console.log("setEvent: chatId: " + chatId + " isGroup: " + isGroup + " JSON: ", json);
-        var userId = json["user_id"];
-        if(isGroup && (!userId || userId === "")) {
-            console.error("Invalid user id on setEvent: " + userId);
-            return null;
-        }
-        var date = json["date"];
-        if(!date || date === "") {
-            console.error("Invalid date on setEvent: " + date);
-            return null;
-        }
-        var command = json["command"];
-        if(!command || command === "") {
-            console.error("Invalid command on setEvent: " + command);
-            return null;
-        }
-
-        var eventId = UuidV1();
+    scheduleEvent(chatId, isGroup, userId, command, date, answers) {
+        console.log("scheduleEvent: chatId: " + chatId + " isGroup: " + isGroup + " userId: " + userId + " command: " + command + " date: " + date + " answers:", answers);
 
         var event = {};
         event["chat_id"] = chatId;
@@ -261,38 +274,19 @@ class CommandAndControl {
         }
         event["date"] = date;
         event["command"] = command;
-
-        var answers = json["answers"];
         if(answers) {
             event["answers"] = answers;
         }
 
+        var eventId = UuidV1();
         this.addToSchedule(eventId, event);
-
-        console.log("Event id: " + eventId);
+        console.log("Scheduled event: eventId: " + eventId);
         return eventId;
     }
 
-    trigger(chatId, isGroup, json) {
-        console.log("trigger: chatId: " + chatId + " isGroup: " + isGroup + " JSON: ", json);
-        var userId;
-        if(isGroup) {
-            userId = json["user_id"]
-        } else {
-            userId = chatId;
-        }
-        if(!userId || userId === "") {
-            console.error("Invalid user id on trigger: " + userId);
-            return false;
-        }
-        var command = json["command"];
-        if(!command || command === "") {
-            console.error("Invalid command on error: " + command);
-            return false;
-        }
-        var answers = this.objectToAnswers(json["answers"]);
-        this.executeCommand(userId, chatId, isGroup, command, answers);
-        return true;
+    scheduleEventInMs(chatId, isGroup, userId, command, ms, answers) {
+        var date = Moment(Date.now() + ms);
+        this.scheduleEvent(chatId, isGroup, userId, command, date, answers);
     }
 
     executeEvent(eventId) {
@@ -414,7 +408,7 @@ class CommandAndControl {
             if(!this.setEventTimer(eventId, event["date"])) {
                 return;
             }
-            FileSystem.writeFileSync(this.scheduleFile, JSON.stringify(this.schedule), (err) => {
+            FileSystem.writeFileSync(this.scheduleFilePath, JSON.stringify(this.schedule), (err) => {
                 if(err) {
                     this.robot.logger.error("Unable to write schedule file", err);
                 }
@@ -427,7 +421,7 @@ class CommandAndControl {
             console.log("removeFromSchedule: eventId: " + eventId);
             this.removeEventTimer(eventId);
             delete this.schedule[eventId];
-            FileSystem.writeFileSync(this.scheduleFile, JSON.stringify(this.schedule), (err) => {
+            FileSystem.writeFileSync(this.scheduleFilePath, JSON.stringify(this.schedule), (err) => {
                 if(err) {
                     this.robot.logger.error("Unable to write schedule file", err);
                 }
