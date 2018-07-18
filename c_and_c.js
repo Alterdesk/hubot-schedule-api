@@ -11,18 +11,52 @@ class CommandAndControl {
         this.timers = {};
         this.overrideCallbacks = {};
 
-        this.token = process.env.HUBOT_COMMAND_AND_CONTROL_TOKEN || "TEST_TOKEN";
-        this.scheduleFilePath = process.env.HUBOT_ALTERDESK_SCHEDULE_FILE || Path.join(process.cwd(), 'schedule.json');
+        this.token = process.env.HUBOT_COMMAND_AND_CONTROL_TOKEN;
+        if(!this.token || this.token === "") {
+            console.error("No token configured!");
+        }
 
-        robot.router.get("/conversations/:chat_id/schedule/:event_id", (req, res) => {this.getEvent(req, res)});
-        robot.router.get("/groupchats/:chat_id/schedule/:event_id", (req, res) => {this.getEvent(req, res)});
-        robot.router.delete("/conversations/:chat_id/schedule/:event_id", (req, res) => {this.deleteEvent(req, res)});
-        robot.router.delete("/groupchats/:chat_id/schedule/:event_id", (req, res) => {this.deleteEvent(req, res)});
-        robot.router.post("/conversations/:chat_id/schedule", (req, res) => {this.postEvent(req, res)});
-        robot.router.post("/groupchats/:chat_id/schedule", (req, res) => {this.postEvent(req, res)});
-        robot.router.post("/conversations/:chat_id/trigger", (req, res) => {this.postTrigger(req, res)});
-        robot.router.post("/groupchats/:chat_id/trigger", (req, res) => {this.postTrigger(req, res)});
+        var app;
+        if(process.env.HUBOT_COMMAND_AND_CONTROL_SERVER) {
+            var express = require('express');
+            app = express();
+            app.use(express.json());
 
+            var port = process.env.HUBOT_COMMAND_AND_CONTROL_PORT || 8443;
+            var keyPath = process.env.HUBOT_COMMAND_AND_CONTROL_KEY_PATH;
+            var certPath = process.env.HUBOT_COMMAND_AND_CONTROL_CERT_PATH;
+            if(keyPath && keyPath !== "" && certPath && certPath !== "") {
+                var options = {
+                   key: FileSystem.readFileSync(keyPath),
+                   cert: FileSystem.readFileSync(certPath),
+                   passphrase: process.env.HUBOT_COMMAND_AND_CONTROL_CERT_PASS
+                };
+                var https = require('https');
+                https.createServer(options, app).listen(port, () => {
+                    console.log("Started HTTPS command and control server on port " + port);
+                });
+            } else {
+                var http = require('http');
+                http.createServer(app).listen(port, () => {
+                    console.log("Started HTTP command and control server on port " + port);
+                });
+            }
+        } else {
+            // Use Hubot default express instance
+            console.log("Using default Hubot HTTP server for command and control");
+            app = robot.router;
+        }
+
+        app.get("/conversations/:chat_id/schedule/:event_id", (req, res) => {this.getEvent(req, res)});
+        app.get("/groupchats/:chat_id/schedule/:event_id", (req, res) => {this.getEvent(req, res)});
+        app.delete("/conversations/:chat_id/schedule/:event_id", (req, res) => {this.deleteEvent(req, res)});
+        app.delete("/groupchats/:chat_id/schedule/:event_id", (req, res) => {this.deleteEvent(req, res)});
+        app.post("/conversations/:chat_id/schedule", (req, res) => {this.postEvent(req, res)});
+        app.post("/groupchats/:chat_id/schedule", (req, res) => {this.postEvent(req, res)});
+        app.post("/conversations/:chat_id/trigger", (req, res) => {this.postTrigger(req, res)});
+        app.post("/groupchats/:chat_id/trigger", (req, res) => {this.postTrigger(req, res)});
+
+        this.scheduleFilePath = process.env.HUBOT_ALTERDESK_SCHEDULE_FILE_PATH || Path.join(process.cwd(), 'schedule.json');
         this.schedule;
         try {
             if (FileSystem.existsSync(this.scheduleFilePath)) {
@@ -179,7 +213,7 @@ class CommandAndControl {
 
             var userId;
             if(isGroup) {
-                userId = bodu["user_id"]
+                userId = body["user_id"]
             } else {
                 userId = chatId;
             }
@@ -235,7 +269,7 @@ class CommandAndControl {
         var token = headers["authorization"];
         if(token && this.token !== token) {
             console.error("Invalid command and control token: " + token);
-            this.respondRequest(req, res, 403, this.getJsonError("Invalid authorization header"));
+            this.respondRequest(req, res, 403, this.getJsonError("Invalid authorization token"));
             return false;
         }
         return true;
