@@ -229,7 +229,7 @@ class CommandAndControl {
                 return;
             }
             var answers = this.objectToAnswers(body["answers"]);
-            this.executeCommand(userId, chatId, isGroup, command, answers);
+            this.executeCommand(chatId, isGroup, userId, command, answers);
 
             var result = {};
             result["success"] = true;
@@ -310,7 +310,11 @@ class CommandAndControl {
         event["date"] = date;
         event["command"] = command;
         if(answers) {
-            event["answers"] = answers;
+            if(answers instanceof Answers) {
+                event["answers"] = this.answersToObject(answers);
+            } else {
+                event["answers"] = answers;
+            }
         }
 
         var eventId = UuidV1();
@@ -356,18 +360,18 @@ class CommandAndControl {
             return false;
         }
         var answers = this.objectToAnswers(event["answers"]);
-        this.executeCommand(userId, chatId, isGroup, command, answers);
+        this.executeCommand(chatId, isGroup, userId, command, answers);
         this.removeFromSchedule(eventId);
         return true;
     }
 
-    executeCommand(userId, chatId, isGroup, command, answers) {
-        console.log("executeCommand: userId: " + userId + " chatId: " + chatId + " isGroup: " + isGroup
+    executeCommand(chatId, isGroup, userId, command, answers) {
+        console.log("executeCommand: chatId: " + chatId + " isGroup: " + isGroup + " userId: " + userId
             + " command: " + command + " answers: ", answers);
 
         var callback = this.overrideCallbacks[command];
         if(callback) {
-            callback(userId, chatId, isGroup, answers);
+            callback(chatId, isGroup, userId, answers);
             return;
         }
         var user = new User(userId);
@@ -395,15 +399,40 @@ class CommandAndControl {
         }
         var keys = Object.keys(answersObject);
         if(!keys) {
-            return;
+            return null;
         }
         var answers = new Answers();
         for(var index in keys) {
             var key = keys[index];
             var value = answersObject[key];
-            answers.add(key, value);
+            if(typeof value === 'object') {
+                answers.add(key, this.objectToAnswers(value));
+            } else {
+                answers.add(key, value);
+            }
         }
         return answers;
+    }
+
+    answersToObject(answers) {
+        if(!answers) {
+            return null;
+        }
+        var keys = answers.keys();
+        if(!keys) {
+            return null;
+        }
+        var answersObject = {};
+        for(var index in keys) {
+            var key = keys[index];
+            var value = answers.get(key);
+            if(value instanceof Answers) {
+                answersObject[key] = this.answersObject(value);
+            } else {
+                answersObject[key] = value;
+            }
+        }
+        return answersObject;
     }
 
     setEventTimer(eventId, dateString) {
@@ -419,7 +448,7 @@ class CommandAndControl {
         var date = Moment(dateString);
         var ms = date - Date.now();
         if(ms <= 0) {
-            console.log("Event past due by " + (-ms) + " milliseconds");
+            console.log("Event past due by " + (-ms) + " milliseconds, executing now: eventId: " + eventId);
             this.executeEvent(eventId);
             return false;
         }
@@ -442,31 +471,37 @@ class CommandAndControl {
     }
 
     addToSchedule(eventId, event) {
-        if(!this.schedule[eventId]) {
-            console.log("addToSchedule: eventId: " + eventId + " event: ", event);
-            this.schedule[eventId] = event;
-            if(!this.setEventTimer(eventId, event["date"])) {
-                return;
-            }
-            FileSystem.writeFileSync(this.scheduleFilePath, JSON.stringify(this.schedule), (err) => {
-                if(err) {
-                    this.robot.logger.error("Unable to write schedule file", err);
-                }
-            });
+        if(this.schedule[eventId]) {
+            console.error("Event already added to schedule on addToSchedule: eventId: " + eventId + " event: ", event);
+            return false;
         }
+        console.log("addToSchedule: eventId: " + eventId + " event: ", event);
+        this.schedule[eventId] = event;
+        if(!this.setEventTimer(eventId, event["date"])) {
+            return true;
+        }
+        FileSystem.writeFileSync(this.scheduleFilePath, JSON.stringify(this.schedule), (error) => {
+            if(error) {
+                this.robot.logger.error("Unable to write schedule file on addToSchedule", error);
+            }
+        });
+        return true;
     }
 
     removeFromSchedule(eventId) {
-        if(this.schedule[eventId]) {
-            console.log("removeFromSchedule: eventId: " + eventId);
-            this.removeEventTimer(eventId);
-            delete this.schedule[eventId];
-            FileSystem.writeFileSync(this.scheduleFilePath, JSON.stringify(this.schedule), (err) => {
-                if(err) {
-                    this.robot.logger.error("Unable to write schedule file", err);
-                }
-            });
+        if(!this.schedule[eventId]) {
+            console.error("Event not found in schedule on removeFromSchedule: eventId: " + eventId);
+            return false;
         }
+        console.log("removeFromSchedule: eventId: " + eventId);
+        this.removeEventTimer(eventId);
+        delete this.schedule[eventId];
+        FileSystem.writeFileSync(this.scheduleFilePath, JSON.stringify(this.schedule), (error) => {
+            if(error) {
+                this.robot.logger.error("Unable to write schedule file on removeFromSchedule", error);
+            }
+        });
+        return true;
     }
 
     setOverrideCallback(command, callback) {
