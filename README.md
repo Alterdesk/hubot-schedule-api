@@ -4,11 +4,25 @@ Library to trigger and schedule events and add a REST API to Hubot
 
 ## REST API
 
+This library adds a basic JSON REST API to the Hubot instance for processing HTTP requests. The library can use the 
+internal Hubot HTTP server or use a separate HTTP or HTTPS server(see the [environment variables](#Environment variables)).
+
+For authentication the HTTP requests need to use an Authorization header with a token which needs to be configured with 
+a [environment variable](#Environment variables).
+
+Request url to the API starts with {protocol}://{host}:{port} abbreviated as {api_destination} below.
 * protocol - http or https(if certificate file is configured)
 * host - URL or ip-address
-* port - Configured port number(default 8080)
+* port - Configured port number(Hubot server default 8080, separate server default 8443)
 
-{protocol}://{host}:{port} -> {api_destination}
+Example curl request, triggering a command on the local machine using defaults
+```bash
+curl \
+ --header "Authorization: {api_token}" \
+ --header "content-Type: application/json; charset=UTF-8" \
+ --data "{\"command\":\"introduce\"}" \
+ http://127.0.0.1:8080/conversations/{conversation_id}/trigger
+```
 
 ### Trigger event in conversation 
 POST: *{api_destination}/conversations/{conversation_id}/trigger*
