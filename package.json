@@ -1,21 +1,21 @@
 {
-  "name": "hubot-command-and-control",
+  "name": "hubot-schedule-api",
   "version": "1.0.0",
-  "description": "Command and control library for Hubot",
-  "main": "c_and_c.js",
+  "description": "Schedule API library for Hubot",
+  "main": "schedule.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Alterdesk/hubot-command-and-control.git"
+    "url": "git+https://github.com/Alterdesk/hubot-schedule-api.git"
   },
   "author": "Alterdesk",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/Alterdesk/hubot-command-and-control/issues"
+    "url": "https://github.com/Alterdesk/hubot-schedule-api/issues"
   },
-  "homepage": "https://github.com/Alterdesk/hubot-command-and-control#readme",
+  "homepage": "https://github.com/Alterdesk/hubot-schedule-api#readme",
   "dependencies": {
     "hubot-questionnaire-framework": "https://github.com/Alterdesk/hubot-questionnaire-framework.git",
     "hubot": "^2.19.0",

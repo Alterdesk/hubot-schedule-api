@@ -1,6 +1,6 @@
-# Hubot Command and control
+# Hubot Schedule API
 
-Hubot library to trigger and schedule events
+Library to trigger and schedule events and add a REST API to Hubot
 
 ## REST API
 

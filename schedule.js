@@ -5,45 +5,45 @@ const {User, Message, TextMessage} = require('hubot');
 const FileSystem = require('fs');
 const Path = require('path');
 
-class CommandAndControl {
+class Schedule {
     constructor(robot) {
         this.robot = robot;
         this.timers = {};
         this.overrideCallbacks = {};
 
-        this.token = process.env.HUBOT_COMMAND_AND_CONTROL_TOKEN;
+        this.token = process.env.HUBOT_SCHEDULE_API_TOKEN;
         if(!this.token || this.token === "") {
             console.error("No token configured!");
         }
 
         var app;
-        if(process.env.HUBOT_COMMAND_AND_CONTROL_SERVER) {
+        if(process.env.HUBOT_SCHEDULE_API_SERVER) {
             var express = require('express');
             app = express();
             app.use(express.json());
 
-            var port = process.env.HUBOT_COMMAND_AND_CONTROL_PORT || 8443;
-            var keyPath = process.env.HUBOT_COMMAND_AND_CONTROL_KEY_PATH;
-            var certPath = process.env.HUBOT_COMMAND_AND_CONTROL_CERT_PATH;
+            var port = process.env.HUBOT_SCHEDULE_API_PORT || 8443;
+            var keyPath = process.env.HUBOT_SCHEDULE_API_KEY_PATH;
+            var certPath = process.env.HUBOT_SCHEDULE_API_CERT_PATH;
             if(keyPath && keyPath !== "" && certPath && certPath !== "") {
                 var options = {
                    key: FileSystem.readFileSync(keyPath),
                    cert: FileSystem.readFileSync(certPath),
-                   passphrase: process.env.HUBOT_COMMAND_AND_CONTROL_CERT_PASS
+                   passphrase: process.env.HUBOT_SCHEDULE_API_CERT_PASS
                 };
                 var https = require('https');
                 https.createServer(options, app).listen(port, () => {
-                    console.log("Started HTTPS command and control server on port " + port);
+                    console.log("Started HTTPS schedule API server on port " + port);
                 });
             } else {
                 var http = require('http');
                 http.createServer(app).listen(port, () => {
-                    console.log("Started HTTP command and control server on port " + port);
+                    console.log("Started HTTP schedule API server on port " + port);
                 });
             }
         } else {
             // Use Hubot default express instance
-            console.log("Using default Hubot HTTP server for command and control");
+            console.log("Using default Hubot HTTP server for schedule API");
             app = robot.router;
         }
 
@@ -268,7 +268,7 @@ class CommandAndControl {
         }
         var token = headers["authorization"];
         if(token && this.token !== token) {
-            console.error("Invalid command and control token: " + token);
+            console.error("Invalid schedule API token: " + token);
             this.respondRequest(req, res, 403, this.getJsonError("Invalid authorization token"));
             return false;
         }
@@ -512,6 +512,6 @@ class CommandAndControl {
 // Export the classes
 module.exports = {
 
-    CommandAndControl : CommandAndControl
+    Schedule : Schedule
 
 };
