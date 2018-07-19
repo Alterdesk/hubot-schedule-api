@@ -108,7 +108,15 @@ GET: *{api_destination}/conversations/{conversation_id}/schedule/{event_id}*
 
 returns event data
 ```json
-
+{
+    "chat_id":"{conversation_id}",
+    "is_groupchat":false,
+    "date":"2018-07-19T10:00:00Z",
+    "command":"introduce",
+    "answers":{
+        "time_of_day":"morning"
+    }
+}
 ```
 
 ### Retrieve scheduled event in groupchat
@@ -116,7 +124,16 @@ GET: *{api_destination}/groupchats/{groupchat_id}/schedule/{event_id}*
 
 returns event data
 ```json
-
+{
+    "chat_id":"{groupchat_id}",
+    "is_groupchat":true,
+    "user_id":"{user_id}",
+    "date":"2018-07-19T12:45:00Z",
+    "command":"introduce",
+    "answers":{
+        "time_of_day":"afternoon"
+    }
+}
 ```
 
 ### Delete scheduled event in conversation
@@ -135,7 +152,7 @@ returns if successful
 {"success":"true"}
 ```
 
-## CommandAndControl class
+## Schedule class
 
 ### constructor(robot)
 Create a new CommandAndControl instance
@@ -167,6 +184,8 @@ returns *(String)* - Id of scheduled event
 Remove a previously scheduled event by id
 * eventId *(String)* - Event id to remove
 
+returns *(Boolean)* If removal was successful
+
 ### setOverrideCallback(command, callback)
 Set an override callback for a command
 * command *(String)* - Command to set the override callback for
@@ -175,3 +194,23 @@ Set an override callback for a command
   * isGroup *(Boolean)* - If the chat is a groupchat or one-to-one chat
   * userId *(String)* - User id the command is called for
   * answers *(Answers)* - Pre-filled Answers instance(may be null)
+  
+## Environment variables
+
+HUBOT_SCHEDULE_API_TOKEN
+* Token to check API requests with
+
+HUBOT_SCHEDULE_API_SERVER
+* Use separate HTTP(S) server(on) or default Hubot HTTP server(off) *(0 = off, 1 = on, default: 0)*
+
+HUBOT_SCHEDULE_API_PORT
+* Port to listen to, only with separate server *(default 8443)*
+
+HUBOT_SCHEDULE_API_KEY_PATH
+* Filepath to pem private key file, only with separate server
+
+HUBOT_SCHEDULE_API_CERT_PATH
+* Filepath to pem certificate file, only with separate server
+
+HUBOT_SCHEDULE_API_CERT_PASS
+* Passphrase for certificate, only with separate server
