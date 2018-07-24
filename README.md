@@ -220,6 +220,9 @@ HUBOT_SCHEDULE_API_SERVER
 HUBOT_SCHEDULE_API_PORT
 * Port to listen to, only with separate server *(default 8443)*
 
+HUBOT_SCHEDULE_API_HOST
+* Host to listen to, only with separate server *(default 0.0.0.0)*
+
 HUBOT_SCHEDULE_API_KEY_PATH
 * Filepath to pem private key file, only with separate server
 

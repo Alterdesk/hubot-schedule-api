@@ -23,6 +23,7 @@ class Schedule {
             app.use(express.json());
 
             var port = process.env.HUBOT_SCHEDULE_API_PORT || 8443;
+            var host = process.env.HUBOT_SCHEDULE_API_HOST || "0.0.0.0";
             var keyPath = process.env.HUBOT_SCHEDULE_API_KEY_PATH;
             var certPath = process.env.HUBOT_SCHEDULE_API_CERT_PATH;
             if(keyPath && keyPath !== "" && certPath && certPath !== "") {
@@ -32,12 +33,12 @@ class Schedule {
                    passphrase: process.env.HUBOT_SCHEDULE_API_CERT_PASS
                 };
                 var https = require('https');
-                https.createServer(options, app).listen(port, () => {
+                https.createServer(options, app).listen(port, host, () => {
                     console.log("Started HTTPS schedule API server on port " + port);
                 });
             } else {
                 var http = require('http');
-                http.createServer(app).listen(port, () => {
+                http.createServer(app).listen(port, host, () => {
                     console.log("Started HTTP schedule API server on port " + port);
                 });
             }
@@ -67,7 +68,7 @@ class Schedule {
                     for(var index in eventIds) {
                         var eventId = eventIds[index];
                         var event = this.schedule[eventId];
-                        this.setEventTimer(eventId, event["date"]);
+                        this.setEventTimer(event);
                     }
                 }
             }
@@ -170,12 +171,6 @@ class Schedule {
                 this.respondRequest(req, res, 400, this.getJsonError("Invalid user id"));
                 return;
             }
-            var date = body["date"];
-            if(!date || date === "") {
-                console.error("Invalid date on setEvent: " + date);
-                this.respondRequest(req, res, 400, this.getJsonError("Invalid date"));
-                return;
-            }
             var command = body["command"];
             if(!command || command === "") {
                 console.error("Invalid command on setEvent: " + command);
@@ -184,8 +179,24 @@ class Schedule {
             }
             var answers = body["answers"];
 
+            var eventId;
+
+            var date = body["date"];
+            var times = body["times"];
+            var days = body["days"];
+            var excludes = body["exclude_dates"];
+            if(date && date !== "") {
+                eventId = this.scheduleEvent(chatId, isGroup, userId, command, date, answers);
+            } else if(times && times.length > 0) {
+                eventId = this.scheduleRepeatedEvent(chatId, isGroup, userId, command, times, days, excludes, answers);
+            } else {
+                console.error("Invalid date on setEvent: " + date);
+                this.respondRequest(req, res, 400, this.getJsonError("Invalid date"));
+                return;
+            }
+
             var result = {};
-            result["id"] = this.scheduleEvent(chatId, isGroup, userId, command, date, answers);
+            result["id"] = eventId;
             this.respondRequest(req, res, 201, JSON.stringify(result));
         } catch(error) {
             console.error(error);
@@ -318,7 +329,9 @@ class Schedule {
         }
 
         var eventId = UuidV1();
-        this.addToSchedule(eventId, event);
+        event["id"] = eventId;
+
+        this.addToSchedule(event);
         console.log("Scheduled event: eventId: " + eventId);
         return eventId;
     }
@@ -329,6 +342,41 @@ class Schedule {
 
         var date = Moment(Date.now() + ms);
         this.scheduleEvent(chatId, isGroup, userId, command, date, answers);
+    }
+
+    scheduleRepeatedEvent(chatId, isGroup, userId, command, times, days, excludes, answers) {
+        console.log("scheduleRepeatedEvent: chatId: " + chatId + " isGroup: " + isGroup + " userId: " + userId
+            + " command: " + command + " times: " + times + " days: " + days + " excludes: " + excludes
+            + " answers:", answers);
+
+        var event = {};
+        event["chat_id"] = chatId;
+        event["is_groupchat"] = isGroup;
+        if(isGroup) {
+            event["user_id"] = userId;
+        }
+        event["times"] = times;
+        if(days && days.length > 0) {
+            event["days"] = days;
+        }
+        if(excludes && excludes.length > 0) {
+            event["exclude_dates"] = excludes;
+        }
+        event["command"] = command;
+        if(answers) {
+            if(answers instanceof Answers) {
+                event["answers"] = this.answersToObject(answers);
+            } else {
+                event["answers"] = answers;
+            }
+        }
+
+        var eventId = UuidV1();
+        event["id"] = eventId;
+
+        this.addToSchedule(event);
+        console.log("Scheduled repeated event: eventId: " + eventId);
+        return eventId;
     }
 
     executeEvent(eventId) {
@@ -361,7 +409,14 @@ class Schedule {
         }
         var answers = this.objectToAnswers(event["answers"]);
         this.executeCommand(chatId, isGroup, userId, command, answers);
-        this.removeFromSchedule(eventId);
+        var times = event["times"];
+        if(times && times.length > 0) {
+            // Repeated event, set next timer
+            this.setEventTimer(event);
+        } else {
+            // One time event, remove from schedule
+            this.removeFromSchedule(eventId);
+        }
         return true;
     }
 
@@ -369,7 +424,7 @@ class Schedule {
         console.log("executeCommand: chatId: " + chatId + " isGroup: " + isGroup + " userId: " + userId
             + " command: " + command + " answers: ", answers);
 
-        var callback = this.overrideCallbacks[command];
+        var callback = this.overrideCallbacks[command.toUpperCase()];
         if(callback) {
             callback(chatId, isGroup, userId, answers);
             return;
@@ -435,16 +490,103 @@ class Schedule {
         return answersObject;
     }
 
-    setEventTimer(eventId, dateString) {
-        console.log("setEventTimer: eventId: " + eventId + " date: " + dateString);
+    calculateNextDate(event) {
+        var date = event["date"];
+        if(date && date !== "") {
+            // One-time event
+            return date;
+        }
+        var times = event["times"];
+        if(!times || times.length == 0) {
+            console.error("Event has no valid time configuration", event);
+            return null;
+        }
+        var now = new Date();
+        var checkMoment = Moment(now).utc();
+        if(this.checkDateForEvent(event, checkMoment)) {
+            var year = checkMoment.year();
+            var month = checkMoment.month();
+            var day = checkMoment.date();
+            for(var index in times) {
+                var time = times[index];
+                var timeSplit = time.split(":");
+                var hours = timeSplit[0];
+                var minutes = timeSplit[1];
+                var seconds = timeSplit[2];
+                var candidateDate = Moment({ y:year, M:month, d:day, h:hours, m:minutes, s:seconds});
+                console.log("Candidate date: " + candidateDate.format("YYYY-MM-DDTHH:mm:ss") + "Z");
+                var diff = candidateDate.diff(checkMoment);
+                // Check if time is in the future
+                if(diff >= 0) {
+                    return candidateDate.format("YYYY-MM-DDTHH:mm:ss") + "Z";
+                }
+            }
+        }
+
+        checkMoment = checkMoment.add(1, "day");
+        while(!this.checkDateForEvent(event, checkMoment)) {
+            checkMoment = checkMoment.add(1, "day");
+        }
+        return checkMoment.format("YYYY-MM-DD") + "T" + times[0] + "Z";
+    }
+
+    checkDateForEvent(event, checkMoment) {
+        var checkDate = checkMoment.format("YYYY-MM-DD");
+        console.log("checkDateForEvent: " + checkDate);
+        var days = event["days"];
+        var excludes = event["exclude_dates"];
+        var checkDays = days && days.length > 0;
+        var checkExcludes = excludes && excludes.length > 0;
+        if(!checkDays && !checkExcludes) {
+            return true;
+        }
+        if(checkExcludes) {
+            for(var index in excludes) {
+                var exclude = excludes[index];
+                if(checkDate === exclude) {
+                    console.log("Excluded date on checkDateForEvent: " + exclude);
+                    return false;
+                }
+            }
+        }
+        if(checkDays) {
+            var checkDay = checkMoment.day();
+            for(var index in days) {
+                var day = days[index];
+                if(checkDay === day) {
+                    console.log("Day of the week on checkDateForEvent: " + day);
+                    return true;
+                }
+            }
+            console.log("Day of the week not used on checkDateForEvent: " + checkDay);
+            return false;
+        }
+        return true;
+    }
+
+    setEventTimer(event) {
+        var eventId = event["id"];
+        if(!eventId || eventId === "") {
+            console.error("Invalid event id on setEventTimer: " + eventId);
+            return false;
+        }
+        console.log("setEventTimer: eventId: " + eventId);
         if(this.timers[eventId]) {
             console.log("Timer already set for event on setEventTimer: " + eventId);
             return false;
+        }
+        var dateString;
+        var date = event["date"];
+        if(date && date !== "") {
+            dateString = date;
+        } else {
+            dateString = this.calculateNextDate(event);
         }
         if(!dateString || dateString === "") {
             console.log("Invalid dateString on setEventTimer: " + dateString);
             return false;
         }
+        console.log("Setting event timer: eventId: " + eventId + " date: " + dateString);
         var date = Moment(dateString);
         var ms = date - Date.now();
         if(ms <= 0) {
@@ -470,14 +612,19 @@ class Schedule {
         clearTimeout(timer);
     }
 
-    addToSchedule(eventId, event) {
+    addToSchedule(event) {
+        var eventId = event["id"];
+        if(!eventId || eventId === "") {
+            console.error("Invalid event id on addToSchedule: " + eventId);
+            return false;
+        }
         if(this.schedule[eventId]) {
             console.error("Event already added to schedule on addToSchedule: eventId: " + eventId + " event: ", event);
             return false;
         }
         console.log("addToSchedule: eventId: " + eventId + " event: ", event);
         this.schedule[eventId] = event;
-        if(!this.setEventTimer(eventId, event["date"])) {
+        if(!this.setEventTimer(event)) {
             return true;
         }
         FileSystem.writeFileSync(this.scheduleFilePath, JSON.stringify(this.schedule), (error) => {
@@ -505,7 +652,7 @@ class Schedule {
     }
 
     setOverrideCallback(command, callback) {
-        this.overrideCallbacks[command] = callback;
+        this.overrideCallbacks[command.toUpperCase()] = callback;
     }
 };
 
