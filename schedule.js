@@ -183,7 +183,7 @@ class Schedule {
 
             var date = body["date"];
             var times = body["times"];
-            var days = body["days"];
+            var days = body["week_days"];
             var excludes = body["exclude_dates"];
             if(date && date !== "") {
                 eventId = this.scheduleEvent(chatId, isGroup, userId, command, date, answers);
@@ -355,12 +355,12 @@ class Schedule {
         if(isGroup) {
             event["user_id"] = userId;
         }
-        event["times"] = times;
+        event["times"] = times.sort();
         if(days && days.length > 0) {
-            event["days"] = days;
+            event["week_days"] = days.sort();
         }
         if(excludes && excludes.length > 0) {
-            event["exclude_dates"] = excludes;
+            event["exclude_dates"] = excludes.sort();
         }
         event["command"] = command;
         if(answers) {
@@ -533,14 +533,9 @@ class Schedule {
     checkDateForEvent(event, checkMoment) {
         var checkDate = checkMoment.format("YYYY-MM-DD");
         console.log("checkDateForEvent: " + checkDate);
-        var days = event["days"];
+        var days = event["week_days"];
         var excludes = event["exclude_dates"];
-        var checkDays = days && days.length > 0;
-        var checkExcludes = excludes && excludes.length > 0;
-        if(!checkDays && !checkExcludes) {
-            return true;
-        }
-        if(checkExcludes) {
+        if(excludes && excludes.length > 0) {
             for(var index in excludes) {
                 var exclude = excludes[index];
                 if(checkDate === exclude) {
@@ -549,8 +544,8 @@ class Schedule {
                 }
             }
         }
-        if(checkDays) {
-            var checkDay = checkMoment.day();
+        if(days && days.length > 0) {
+            var checkDay = checkMoment.isoWeekday();
             for(var index in days) {
                 var day = days[index];
                 if(checkDay === day) {
