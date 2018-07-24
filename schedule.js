@@ -534,16 +534,6 @@ class Schedule {
         var checkDate = checkMoment.format("YYYY-MM-DD");
         console.log("checkDateForEvent: " + checkDate);
         var days = event["week_days"];
-        var excludes = event["exclude_dates"];
-        if(excludes && excludes.length > 0) {
-            for(var index in excludes) {
-                var exclude = excludes[index];
-                if(checkDate === exclude) {
-                    console.log("Excluded date on checkDateForEvent: " + exclude);
-                    return false;
-                }
-            }
-        }
         if(days && days.length > 0) {
             var checkDay = checkMoment.isoWeekday();
             for(var index in days) {
@@ -555,6 +545,16 @@ class Schedule {
             }
             console.log("Day of the week not used on checkDateForEvent: " + checkDay);
             return false;
+        }
+        var excludes = event["exclude_dates"];
+        if(excludes && excludes.length > 0) {
+            for(var index in excludes) {
+                var exclude = excludes[index];
+                if(checkDate === exclude) {
+                    console.log("Excluded date on checkDateForEvent: " + exclude);
+                    return false;
+                }
+            }
         }
         return true;
     }
