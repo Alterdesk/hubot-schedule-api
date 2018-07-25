@@ -179,7 +179,7 @@ Schedule an event by date for a user in a chat with a command and optional pre-f
 * userId *(String)* - User id to schedule command for
 * command *(String)* - Command to schedule
 * date *(String)* - UTC Timestamp to schedule command *(YYYY-MM-DDTHH:mm:ssZ)*
-* answers *(Answers)* - Optional pre-filled Answers instance
+* answers *(Answers)* - Pre-filled Answers instance *(Optional)*
 
 returns *(String)* - Id of scheduled event
 
@@ -190,9 +190,19 @@ Schedule an event for a user in a chat with a command and optional pre-filled An
 * userId *(String)* - User id to schedule command for
 * command *(String)* - Command to schedule
 * ms *(Integer)* - Milliseconds to 
-* answers *(Answers)* - Optional pre-filled Answers instance
+* answers *(Answers)* - Pre-filled Answers instance *(Optional)*
 
 returns *(String)* - Id of scheduled event
+
+### scheduleRepeatedEvent(chatId, isGroup, userId, command, times, days, excludes, answers)
+* chatId *(String)* - Chat id where the command is scheduled in
+* isGroup *(Boolean)* - If the chat is a groupchat or one-to-one chat
+* userId *(String)* - User id to schedule command for
+* command *(String)* - Command to schedule
+* times *(Array)* - Array of UTC times to schedule command *(HH:mm:ss)*
+* days *(Array)* - Integer array of days to schedule *(Optional, 1=monday, 7=sunday)*
+* excludes *(Array)* - Array of dates to exclude from schedule *(Optional, YYYY-MM-DD)*
+* answers *(Answers)* - Pre-filled Answers instance *(Optional)*
 
 ### removeFromSchedule(eventId)
 Remove a previously scheduled event by id
@@ -207,7 +217,7 @@ Set an override callback for a command
   * chatId *(String)* - Chat id where the command is called in
   * isGroup *(Boolean)* - If the chat is a groupchat or one-to-one chat
   * userId *(String)* - User id the command is called for
-  * answers *(Answers)* - Pre-filled Answers instance(may be null)
+  * answers *(Answers)* - Pre-filled Answers instance *(Optional)*
   
 ## Environment variables
 
