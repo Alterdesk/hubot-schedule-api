@@ -19,6 +19,7 @@
   "dependencies": {
     "hubot-questionnaire-framework": "https://github.com/Alterdesk/hubot-questionnaire-framework.git",
     "hubot": "^2.19.0",
+    "log": "1.4.0",
     "express": "^3.21.2",
     "moment": "^2.20.1",
     "uuid": "^3.2.1"

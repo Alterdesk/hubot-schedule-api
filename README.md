@@ -220,6 +220,8 @@ Set an override callback for a command
   * answers *(Answers)* - Pre-filled Answers instance *(Optional)*
   
 ## Environment variables
+Schedule API log level
+* HUBOT_SCHEDULE_API_LOG_LEVEL *(String)*
 
 HUBOT_SCHEDULE_API_TOKEN
 * Token to check API requests with

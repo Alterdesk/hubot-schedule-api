@@ -4,6 +4,10 @@ const {Answers} = require('hubot-questionnaire-framework');
 const {User, Message, TextMessage} = require('hubot');
 const FileSystem = require('fs');
 const Path = require('path');
+const Log = require('log');
+
+// Set the log instance
+var logger = new Log(process.env.HUBOT_SCHEDULE_API_LOG_LEVEL || process.env.HUBOT_LOG_LEVEL || 'info');
 
 class Schedule {
     constructor(robot) {
@@ -13,7 +17,7 @@ class Schedule {
 
         this.token = process.env.HUBOT_SCHEDULE_API_TOKEN;
         if(!this.token || this.token === "") {
-            console.error("No token configured!");
+            logger.error("Schedule::constructor() No token configured!");
         }
 
         var app;
@@ -34,17 +38,17 @@ class Schedule {
                 };
                 var https = require('https');
                 https.createServer(options, app).listen(port, host, () => {
-                    console.log("Started HTTPS schedule API server on port " + port);
+                    logger.debug("Schedule::constructor() Started HTTPS schedule API server on port " + port);
                 });
             } else {
                 var http = require('http');
                 http.createServer(app).listen(port, host, () => {
-                    console.log("Started HTTP schedule API server on port " + port);
+                    logger.debug("Schedule::constructor() Started HTTP schedule API server on port " + port);
                 });
             }
         } else {
             // Use Hubot default express instance
-            console.log("Using default Hubot HTTP server for schedule API");
+            logger.debug("Schedule::constructor() Using default Hubot HTTP server for schedule API");
             app = robot.router;
         }
 
@@ -62,7 +66,7 @@ class Schedule {
         try {
             if (FileSystem.existsSync(this.scheduleFilePath)) {
                 this.schedule = JSON.parse(FileSystem.readFileSync(this.scheduleFilePath));
-                console.log("Loaded schedule:", this.schedule);
+                logger.debug("Schedule::constructor() Loaded schedule:", this.schedule);
                 var eventIds = Object.keys(this.schedule);
                 if(eventIds) {
                     for(var index in eventIds) {
@@ -73,7 +77,7 @@ class Schedule {
                 }
             }
         } catch(error) {
-            console.error(error);
+            logger.error("Schedule::constructor() Load schedule error:", error);
         }
         if(!this.schedule) {
             this.schedule = {};
@@ -87,13 +91,13 @@ class Schedule {
             }
             var chatId = req.params.chat_id;
             if(!chatId) {
-                console.error("Invalid chat id on getEvent");
+                logger.error("Schedule::getEvent() Invalid chat id");
                 this.respondRequest(req, res, 400, this.getJsonError("Invalid chat id"));
                 return;
             }
             var eventId = req.params.event_id;
             if(!chatId) {
-                console.error("Invalid event id on getEvent");
+                logger.error("Schedule::getEvent() Invalid event id");
                 this.respondRequest(req, res, 400, this.getJsonError("Invalid event id"));
                 return;
             }
@@ -107,7 +111,7 @@ class Schedule {
 
             this.respondRequest(req, res, 200, JSON.stringify(event));
         } catch(error) {
-            console.error(error);
+            logger.error("Schedule::getEvent()", error);
             this.respondRequest(req, res, 500, this.getJsonError("Get scheduled event error"));
         }
     }
@@ -119,13 +123,13 @@ class Schedule {
             }
             var chatId = req.params.chat_id;
             if(!chatId) {
-                console.error("Invalid chat id on deleteEvent");
+                logger.error("Schedule::deleteEvent() Invalid chat id");
                 this.respondRequest(req, res, 400, this.getJsonError("Invalid chat id"));
                 return;
             }
             var eventId = req.params.event_id;
             if(!chatId) {
-                console.error("Invalid event id on deleteEvent");
+                logger.error("Schedule::deleteEvent() Invalid event id");
                 this.respondRequest(req, res, 400, this.getJsonError("Invalid event id"));
                 return;
             }
@@ -143,7 +147,7 @@ class Schedule {
             result["success"] = true;
             this.respondRequest(req, res, 200, JSON.stringify(result));
         } catch(error) {
-            console.error(error);
+            logger.error("Schedule::deleteEvent()", error);
             this.respondRequest(req, res, 500, this.getJsonError("Delete scheduled event error"));
         }
     }
@@ -155,7 +159,7 @@ class Schedule {
             }
             var chatId = req.params.chat_id;
             if(!chatId) {
-                console.error("Invalid chat id on postEvent");
+                logger.error("Schedule::postEvent() Invalid chat id");
                 this.respondRequest(req, res, 400, this.getJsonError("Invalid chat id"));
                 return;
             }
@@ -167,13 +171,13 @@ class Schedule {
             var isGroup = req.url.startsWith("/groupchats");
             var userId = body["user_id"];
             if(isGroup && (!userId || userId === "")) {
-                console.error("Invalid user id on setEvent: " + userId);
+                logger.error("Schedule::postEvent() Invalid user id: " + userId);
                 this.respondRequest(req, res, 400, this.getJsonError("Invalid user id"));
                 return;
             }
             var command = body["command"];
             if(!command || command === "") {
-                console.error("Invalid command on setEvent: " + command);
+                logger.error("Schedule::postEvent() Invalid command: " + command);
                 this.respondRequest(req, res, 400, this.getJsonError("Invalid command"));
                 return;
             }
@@ -190,7 +194,7 @@ class Schedule {
             } else if(times && times.length > 0) {
                 eventId = this.scheduleRepeatedEvent(chatId, isGroup, userId, command, times, days, excludes, answers);
             } else {
-                console.error("Invalid date on setEvent: " + date);
+                logger.error("Schedule::postEvent() Invalid date: " + date);
                 this.respondRequest(req, res, 400, this.getJsonError("Invalid date"));
                 return;
             }
@@ -199,7 +203,7 @@ class Schedule {
             result["id"] = eventId;
             this.respondRequest(req, res, 201, JSON.stringify(result));
         } catch(error) {
-            console.error(error);
+            logger.error("Schedule::postEvent()", error);
             this.respondRequest(req, res, 500, this.getJsonError("Schedule event error"));
         }
     }
@@ -211,7 +215,7 @@ class Schedule {
             }
             var chatId = req.params.chat_id;
             if(!chatId) {
-                console.error("Invalid chat id");
+                logger.error("Schedule::postTrigger() Invalid chat id");
                 this.respondRequest(req, res, 400, this.getJsonError("Invalid chat id"));
                 return;
             }
@@ -229,13 +233,13 @@ class Schedule {
                 userId = chatId;
             }
             if(!userId || userId === "") {
-                console.error("Invalid user id on trigger: " + userId);
+                logger.error("Schedule::postTrigger() Invalid user id: " + userId);
                 this.respondRequest(req, res, 400, this.getJsonError("Invalid user id"));
                 return;
             }
             var command = body["command"];
             if(!command || command === "") {
-                console.error("Invalid command on error: " + command);
+                logger.error("Schedule::postTrigger() Invalid command: " + command);
                 this.respondRequest(req, res, 400, this.getJsonError("Invalid command"));
                 return;
             }
@@ -247,25 +251,25 @@ class Schedule {
 
             this.respondRequest(req, res, 200, JSON.stringify(result));
         } catch(error) {
-            console.error(error);
+            logger.error("Schedule::postTrigger()", error);
             this.respondRequest(req, res, 500, this.getJsonError("Trigger error"));
         }
     }
 
     checkRequest(req, res) {
         if(!req) {
-            console.error(this.getJsonError("Invalid request object"))
+            logger.error("Schedule::checkRequest() Invalid request object");
             return false;
         }
         if(!res) {
-            console.error(this.getJsonError("Invalid response object"))
+            logger.error("Schedule::checkRequest() Invalid response object");
             return false;
         }
-        var requestText = "Command::" + req.method.toLowerCase() + "() << " + req.url + ":";
+        var requestText = "Schedule::" + req.method.toLowerCase() + "() << " + req.url + ":";
         if(req.body) {
-            console.log(requestText, req.body);
+            logger.debug(requestText, req.body);
         } else {
-            console.log(requestText);
+            logger.debug(requestText);
         }
         var params = req.params;
         if(!params) {
@@ -279,7 +283,7 @@ class Schedule {
         }
         var token = headers["authorization"];
         if(token && this.token !== token) {
-            console.error("Invalid schedule API token: " + token);
+            logger.error("Schedule::checkRequest() Invalid schedule API token: " + token);
             this.respondRequest(req, res, 403, this.getJsonError("Invalid authorization token"));
             return false;
         }
@@ -287,7 +291,7 @@ class Schedule {
     }
 
     respondRequest(req, res, statusCode, body) {
-        console.log("Command::" + req.method.toLowerCase() + "() >> " + req.url + ": " + statusCode + ":", body);
+        logger.debug("Schedule::" + req.method.toLowerCase() + "() >> " + req.url + ": " + statusCode + ":", body);
         if(res.status) {
             res.status(statusCode);
         } else {
@@ -297,7 +301,7 @@ class Schedule {
     }
 
     getScheduledEvent(chatId, isGroup, eventId) {
-        console.log("getScheduledEvent: chatId: " + chatId + " isGroup: " + isGroup + " eventId: " + eventId);
+        logger.debug("Schedule::getScheduledEvent() chatId: " + chatId + " isGroup: " + isGroup + " eventId: " + eventId);
         if(!this.schedule || !this.schedule[eventId]) {
             return null;
         }
@@ -309,7 +313,7 @@ class Schedule {
     }
 
     scheduleEvent(chatId, isGroup, userId, command, date, answers) {
-        console.log("scheduleEvent: chatId: " + chatId + " isGroup: " + isGroup + " userId: " + userId
+        logger.debug("Schedule::scheduleEvent() chatId: " + chatId + " isGroup: " + isGroup + " userId: " + userId
             + " command: " + command + " date: " + date + " answers:", answers);
 
         var event = {};
@@ -332,12 +336,12 @@ class Schedule {
         event["id"] = eventId;
 
         this.addToSchedule(event);
-        console.log("Scheduled event: eventId: " + eventId);
+        logger.debug("Schedule::scheduleEvent() Scheduled eventId: " + eventId);
         return eventId;
     }
 
     scheduleEventInMs(chatId, isGroup, userId, command, ms, answers) {
-        console.log("scheduleEventInMs: chatId: " + chatId + " isGroup: " + isGroup + " userId: " + userId
+        logger.debug("Schedule::scheduleEventInMs() chatId: " + chatId + " isGroup: " + isGroup + " userId: " + userId
             + " command: " + command + " ms: " + ms + " answers:", answers);
 
         var date = Moment(Date.now() + ms);
@@ -345,7 +349,7 @@ class Schedule {
     }
 
     scheduleRepeatedEvent(chatId, isGroup, userId, command, times, days, excludes, answers) {
-        console.log("scheduleRepeatedEvent: chatId: " + chatId + " isGroup: " + isGroup + " userId: " + userId
+        logger.debug("Schedule::scheduleRepeatedEvent() chatId: " + chatId + " isGroup: " + isGroup + " userId: " + userId
             + " command: " + command + " times: " + times + " days: " + days + " excludes: " + excludes
             + " answers:", answers);
 
@@ -375,21 +379,21 @@ class Schedule {
         event["id"] = eventId;
 
         this.addToSchedule(event);
-        console.log("Scheduled repeated event: eventId: " + eventId);
+        logger.debug("Schedule::scheduleRepeatedEvent() Scheduled repeated eventId: " + eventId);
         return eventId;
     }
 
     executeEvent(eventId) {
-        console.log("executeEvent: eventId: " + eventId);
+        logger.debug("Schedule::executeEvent() eventId: " + eventId);
         var event = this.schedule[eventId];
         if(!event) {
-            console.error("No event found in schedule for id: " + eventId);
+            logger.error("Schedule::executeEvent() No event found in schedule for id: " + eventId);
             return false;
         }
         var isGroup = event["is_groupchat"];
         var chatId = event["chat_id"];
         if(!chatId || chatId === "") {
-            console.error("Invalid chat id on executeEvent: " + chatId);
+            logger.error("Schedule::executeEvent() Invalid chat id: " + chatId);
             return false;
         }
         var userId;
@@ -399,12 +403,12 @@ class Schedule {
             userId = chatId;
         }
         if(!userId || userId === "") {
-            console.error("Invalid user id on executeEvent: " + userId);
+            logger.error("Schedule::executeEvent() Invalid user id: " + userId);
             return false;
         }
         var command = event["command"];
         if(!command || command === "") {
-            console.error("Invalid command on executeEvent: " + command);
+            logger.error("Schedule::executeEvent() Invalid command: " + command);
             return false;
         }
         var answers = this.objectToAnswers(event["answers"]);
@@ -424,7 +428,7 @@ class Schedule {
     }
 
     executeCommand(chatId, isGroup, userId, command, answers) {
-        console.log("executeCommand: chatId: " + chatId + " isGroup: " + isGroup + " userId: " + userId
+        logger.debug("Schedule::executeCommand() chatId: " + chatId + " isGroup: " + isGroup + " userId: " + userId
             + " command: " + command + " answers: ", answers);
 
         var callback = this.overrideCallbacks[command.toUpperCase()];
@@ -501,12 +505,12 @@ class Schedule {
         }
         var times = event["times"];
         if(!times || times.length == 0) {
-            console.error("Event has no valid time configuration", event);
+            logger.error("Schedule::calculateNextDate() Event has no valid time configuration", event);
             return null;
         }
         var now = new Date();
         var checkMoment = Moment(now).utc();
-        console.log("calculateNextDate: " + checkMoment.format("YYYY-MM-DDTHH:mm:ss") + "Z");
+        logger.debug("Schedule::calculateNextDate() " + checkMoment.format("YYYY-MM-DDTHH:mm:ss") + "Z");
         if(this.checkDateForEvent(event, checkMoment)) {
             var year = checkMoment.year();
             var month = checkMoment.month();
@@ -518,7 +522,7 @@ class Schedule {
                 var minutes = timeSplit[1];
                 var seconds = timeSplit[2];
                 var candidateDate = Moment({y:year, M:month, d:day, h:hours, m:minutes, s:seconds}).utcOffset(0, true);
-                console.log("Candidate date: " + candidateDate.format("YYYY-MM-DDTHH:mm:ss") + "Z");
+                logger.debug("Schedule::calculateNextDate() Candidate date: " + candidateDate.format("YYYY-MM-DDTHH:mm:ss") + "Z");
                 var diff = candidateDate.diff(checkMoment);
                 // Check if time is in the future
                 if(diff >= 0) {
@@ -536,13 +540,13 @@ class Schedule {
 
     checkDateForEvent(event, checkMoment) {
         var checkDate = checkMoment.format("YYYY-MM-DD");
-        console.log("checkDateForEvent: " + checkDate);
+        logger.debug("Schedule::checkDateForEvent() " + checkDate);
         var excludes = event["exclude_dates"];
         if(excludes && excludes.length > 0) {
             for(var index in excludes) {
                 var exclude = excludes[index];
                 if(checkDate === exclude) {
-                    console.log("Excluded date on checkDateForEvent: " + exclude);
+                    logger.debug("Schedule::checkDateForEvent() Excluded date: " + exclude);
                     return false;
                 }
             }
@@ -553,11 +557,11 @@ class Schedule {
             for(var index in days) {
                 var day = days[index];
                 if(checkDay === day) {
-                    console.log("Day of the week on checkDateForEvent: " + day);
+                    logger.debug("Schedule::checkDateForEvent() Accepted day of the week: " + day);
                     return true;
                 }
             }
-            console.log("Day of the week not used on checkDateForEvent: " + checkDay);
+            logger.debug("Schedule::checkDateForEvent() Unaccepted day of the week: " + checkDay);
             return false;
         }
         return true;
@@ -566,12 +570,12 @@ class Schedule {
     setEventTimer(event) {
         var eventId = event["id"];
         if(!eventId || eventId === "") {
-            console.error("Invalid event id on setEventTimer: " + eventId);
+            logger.error("Schedule::setEventTimer() Invalid event id: " + eventId);
             return false;
         }
-        console.log("setEventTimer: eventId: " + eventId);
+        logger.debug("Schedule::setEventTimer() eventId: " + eventId);
         if(this.timers[eventId]) {
-            console.log("Timer already set for event on setEventTimer: " + eventId);
+            logger.error("Schedule::setEventTimer() Timer already set for event: " + eventId);
             return false;
         }
         var dateString;
@@ -582,18 +586,18 @@ class Schedule {
             dateString = this.calculateNextDate(event);
         }
         if(!dateString || dateString === "") {
-            console.log("Invalid dateString on setEventTimer: " + dateString);
+            logger.error("Schedule::setEventTimer() Invalid dateString: " + dateString);
             return false;
         }
-        console.log("Setting event timer: eventId: " + eventId + " date: " + dateString);
+        logger.debug("Schedule::setEventTimer() Setting event timer: eventId: " + eventId + " date: " + dateString);
         var date = Moment(dateString);
         var ms = date - Date.now();
         if(ms <= 0) {
-            console.log("Event past due by " + (-ms) + " milliseconds, executing now: eventId: " + eventId);
+            logger.debug("Schedule::setEventTimer() Event past due by " + (-ms) + " milliseconds, executing now: eventId: " + eventId);
             this.executeEvent(eventId);
             return false;
         }
-        console.log("Event timer set: eventId: " + eventId + " ms: " + ms);
+        logger.debug("Schedule::setEventTimer() Event timer set: eventId: " + eventId + " ms: " + ms);
         this.timers[eventId] = setTimeout(() => {
             this.executeEvent(eventId);
         }, ms);
@@ -601,10 +605,10 @@ class Schedule {
     }
 
     removeEventTimer(eventId) {
-        console.log("removeEventTimer: eventId: " + eventId);
+        logger.debug("Schedule::removeEventTimer() eventId: " + eventId);
         var timer = this.timers[eventId];
         if(!timer) {
-            console.log("No timer set for event: " + eventId);
+            logger.error("Schedule::removeEventTimer() No timer set for event: " + eventId);
             return;
         }
         delete this.timers[eventId];
@@ -614,21 +618,21 @@ class Schedule {
     addToSchedule(event) {
         var eventId = event["id"];
         if(!eventId || eventId === "") {
-            console.error("Invalid event id on addToSchedule: " + eventId);
+            logger.error("Schedule::addToSchedule() Invalid event id: " + eventId);
             return false;
         }
         if(this.schedule[eventId]) {
-            console.error("Event already added to schedule on addToSchedule: eventId: " + eventId + " event: ", event);
+            logger.error("Schedule::addToSchedule() Event already added to schedule: eventId: " + eventId + " event: ", event);
             return false;
         }
-        console.log("addToSchedule: eventId: " + eventId + " event: ", event);
+        logger.debug("Schedule::addToSchedule() eventId: " + eventId + " event: ", event);
         this.schedule[eventId] = event;
         if(!this.setEventTimer(event)) {
             return true;
         }
         FileSystem.writeFileSync(this.scheduleFilePath, JSON.stringify(this.schedule), (error) => {
             if(error) {
-                this.robot.logger.error("Unable to write schedule file on addToSchedule", error);
+                logger.error("Schedule::addToSchedule() Unable to write schedule file", error);
             }
         });
         return true;
@@ -636,15 +640,15 @@ class Schedule {
 
     removeFromSchedule(eventId) {
         if(!this.schedule[eventId]) {
-            console.error("Event not found in schedule on removeFromSchedule: eventId: " + eventId);
+            logger.error("Schedule::removeFromSchedule() Event not found in schedule: eventId: " + eventId);
             return false;
         }
-        console.log("removeFromSchedule: eventId: " + eventId);
+        logger.debug("Schedule::removeFromSchedule() eventId: " + eventId);
         this.removeEventTimer(eventId);
         delete this.schedule[eventId];
         FileSystem.writeFileSync(this.scheduleFilePath, JSON.stringify(this.schedule), (error) => {
             if(error) {
-                this.robot.logger.error("Unable to write schedule file on removeFromSchedule", error);
+                logger.error("Schedule:removeFromSchedule() Unable to write schedule file", error);
             }
         });
         return true;
