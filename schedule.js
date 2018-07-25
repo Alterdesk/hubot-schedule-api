@@ -412,7 +412,10 @@ class Schedule {
         var times = event["times"];
         if(times && times.length > 0) {
             // Repeated event, set next timer
-            this.setEventTimer(event);
+            this.removeEventTimer(eventId);
+            setTimeout(() => {
+                this.setEventTimer(event);
+            }, 1000);
         } else {
             // One time event, remove from schedule
             this.removeFromSchedule(eventId);
@@ -503,6 +506,7 @@ class Schedule {
         }
         var now = new Date();
         var checkMoment = Moment(now).utc();
+        console.log("calculateNextDate: " + checkMoment.format("YYYY-MM-DDTHH:mm:ss") + "Z");
         if(this.checkDateForEvent(event, checkMoment)) {
             var year = checkMoment.year();
             var month = checkMoment.month();
@@ -513,7 +517,7 @@ class Schedule {
                 var hours = timeSplit[0];
                 var minutes = timeSplit[1];
                 var seconds = timeSplit[2];
-                var candidateDate = Moment({ y:year, M:month, d:day, h:hours, m:minutes, s:seconds});
+                var candidateDate = Moment({y:year, M:month, d:day, h:hours, m:minutes, s:seconds}).utcOffset(0, true);
                 console.log("Candidate date: " + candidateDate.format("YYYY-MM-DDTHH:mm:ss") + "Z");
                 var diff = candidateDate.diff(checkMoment);
                 // Check if time is in the future
