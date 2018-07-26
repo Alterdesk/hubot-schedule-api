@@ -224,7 +224,7 @@ Schedule API log level
 * HUBOT_SCHEDULE_API_LOG_LEVEL
 
 HUBOT_SCHEDULE_API_TOKEN
-* Token to check API requests with
+* Token to check API requests with, using a UUID is recommended
 
 HUBOT_SCHEDULE_API_SERVER
 * Use separate HTTP(S) server(on) or default Hubot HTTP server(off) *(0 = off, 1 = on, default: 0)*
