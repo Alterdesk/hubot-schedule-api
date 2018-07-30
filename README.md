@@ -72,7 +72,7 @@ returns if successful
 ### Schedule event in conversation
 POST: *{api_destination}/conversations/{conversation_id}/schedule*
 
-Example request body
+Example request body for one-time event
 ```json
 {
     "date":"2018-07-17T07:35:00Z",
@@ -87,6 +87,25 @@ Example request body
 * command - Command to trigger
 * answers - Pre-filled answers to use *(Optional)*
 
+Example request body for repeated event
+```json
+{
+    "times":["08:00","15:00"],
+    "week_days":[1,6,7],
+    "exclude_dates":["2018-10-04","2018-12-25"],
+    "command":"checkup",
+    "answers":{
+        "key_one":"value_one",
+        "key_two":"value_two"
+    }
+}
+```
+* times - UTC times array to schedule command *(HH:mm:ss)*
+* week_days - Integer array of days to schedule *(Optional, 1=monday, 7=sunday)*
+* exclude_dates - Array of dates to exclude from schedule *(Optional, YYYY-MM-DD)*
+* command - Command to trigger
+* answers - Pre-filled answers to use *(Optional)*
+
 returns scheduled event id
 ```json
 {"id":"{event_id}"}
@@ -95,7 +114,7 @@ returns scheduled event id
 ### Schedule event in groupchat
 POST: *{api_destination}/groupchats/{groupchat_id}/schedule*
 
-Example request body
+Example request body for one-time event
 ```json
 {
     "user_id":"{user_id}",
@@ -109,6 +128,27 @@ Example request body
 ```
 * user_id - User id to trigger command for
 * date - UTC Timestamp to schedule command *(YYYY-MM-DDTHH:mm:ssZ)*
+* command - Command to trigger
+* answers - Pre-filled answers to use *(Optional)*
+
+Example request body for repeated event
+```json
+{
+    "user_id":"{user_id}",
+    "times":["08:00","15:00"],
+    "week_days":[1,6,7],
+    "exclude_dates":["2018-10-04","2018-12-25"],
+    "command":"checkup",
+    "answers":{
+        "key_one":"value_one",
+        "key_two":"value_two"
+    }
+}
+```
+* user_id - User id to trigger command for
+* times - UTC times array to schedule command *(HH:mm:ss)*
+* week_days - Integer array of days to schedule *(Optional, 1=monday, 7=sunday)*
+* exclude_dates - Array of dates to exclude from schedule *(Optional, YYYY-MM-DD)*
 * command - Command to trigger
 * answers - Pre-filled answers to use *(Optional)*
 
