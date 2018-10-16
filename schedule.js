@@ -243,7 +243,7 @@ class Schedule {
                 this.respondRequest(req, res, 400, this.getJsonError("Invalid command"));
                 return;
             }
-            var answers = this.objectToAnswers(body["answers"]);
+            var answers = Answers.fromObject(body["answers"]);
             this.executeCommand(chatId, isGroup, userId, command, answers);
 
             var result = {};
@@ -326,7 +326,7 @@ class Schedule {
         event["command"] = command;
         if(answers) {
             if(answers instanceof Answers) {
-                event["answers"] = this.answersToObject(answers);
+                event["answers"] = answers.toObject();
             } else {
                 event["answers"] = answers;
             }
@@ -369,7 +369,7 @@ class Schedule {
         event["command"] = command;
         if(answers) {
             if(answers instanceof Answers) {
-                event["answers"] = this.answersToObject(answers);
+                event["answers"] = answers.toObject();
             } else {
                 event["answers"] = answers;
             }
@@ -411,7 +411,7 @@ class Schedule {
             logger.error("Schedule::executeEvent() Invalid command: " + command);
             return false;
         }
-        var answers = this.objectToAnswers(event["answers"]);
+        var answers = Answers.fromObject(event["answers"]);
         this.executeCommand(chatId, isGroup, userId, command, answers);
         var times = event["times"];
         if(times && times.length > 0) {
@@ -455,48 +455,6 @@ class Schedule {
         return JSON.stringify(error);
     }
 
-    objectToAnswers(answersObject) {
-        if(!answersObject) {
-            return null;
-        }
-        var keys = Object.keys(answersObject);
-        if(!keys) {
-            return null;
-        }
-        var answers = new Answers();
-        for(var index in keys) {
-            var key = keys[index];
-            var value = answersObject[key];
-            if(typeof value === 'object') {
-                answers.add(key, this.objectToAnswers(value));
-            } else {
-                answers.add(key, value);
-            }
-        }
-        return answers;
-    }
-
-    answersToObject(answers) {
-        if(!answers) {
-            return null;
-        }
-        var keys = answers.keys();
-        if(!keys) {
-            return null;
-        }
-        var answersObject = {};
-        for(var index in keys) {
-            var key = keys[index];
-            var value = answers.get(key);
-            if(value instanceof Answers) {
-                answersObject[key] = this.answersObject(value);
-            } else {
-                answersObject[key] = value;
-            }
-        }
-        return answersObject;
-    }
-
     calculateNextDate(event) {
         var date = event["date"];
         if(date && date !== "") {
@@ -531,10 +489,9 @@ class Schedule {
             }
         }
 
-        checkMoment = checkMoment.add(1, "day");
-        while(!this.checkDateForEvent(event, checkMoment)) {
+        do {
             checkMoment = checkMoment.add(1, "day");
-        }
+        } while(!this.checkDateForEvent(event, checkMoment));
         return checkMoment.format("YYYY-MM-DD") + "T" + times[0] + "Z";
     }
 
