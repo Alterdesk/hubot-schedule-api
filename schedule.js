@@ -7,7 +7,7 @@ const Path = require('path');
 const Log = require('log');
 
 // Set the log instance
-var logger = new Log(process.env.HUBOT_SCHEDULE_API_LOG_LEVEL || process.env.HUBOT_LOG_LEVEL || 'info');
+var Logger = new Log(process.env.HUBOT_SCHEDULE_API_LOG_LEVEL || process.env.HUBOT_LOG_LEVEL || 'info');
 
 class Schedule {
     constructor(robot) {
@@ -17,7 +17,7 @@ class Schedule {
 
         this.token = process.env.HUBOT_SCHEDULE_API_TOKEN;
         if(!this.token || this.token === "") {
-            logger.error("Schedule::constructor() No token configured!");
+            Logger.error("Schedule::constructor() No token configured!");
         }
 
         var app;
@@ -38,17 +38,17 @@ class Schedule {
                 };
                 var https = require('https');
                 https.createServer(options, app).listen(port, host, () => {
-                    logger.debug("Schedule::constructor() Started HTTPS schedule API server on port " + port);
+                    Logger.debug("Schedule::constructor() Started HTTPS schedule API server on port " + port);
                 });
             } else {
                 var http = require('http');
                 http.createServer(app).listen(port, host, () => {
-                    logger.debug("Schedule::constructor() Started HTTP schedule API server on port " + port);
+                    Logger.debug("Schedule::constructor() Started HTTP schedule API server on port " + port);
                 });
             }
         } else {
             // Use Hubot default express instance
-            logger.debug("Schedule::constructor() Using default Hubot HTTP server for schedule API");
+            Logger.debug("Schedule::constructor() Using default Hubot HTTP server for schedule API");
             app = robot.router;
         }
 
@@ -66,7 +66,7 @@ class Schedule {
         try {
             if (FileSystem.existsSync(this.scheduleFilePath)) {
                 this.schedule = JSON.parse(FileSystem.readFileSync(this.scheduleFilePath));
-                logger.debug("Schedule::constructor() Loaded schedule:", this.schedule);
+                Logger.debug("Schedule::constructor() Loaded schedule:", this.schedule);
                 var eventIds = Object.keys(this.schedule);
                 if(eventIds) {
                     for(var index in eventIds) {
@@ -77,7 +77,7 @@ class Schedule {
                 }
             }
         } catch(error) {
-            logger.error("Schedule::constructor() Load schedule error:", error);
+            Logger.error("Schedule::constructor() Load schedule error:", error);
         }
         if(!this.schedule) {
             this.schedule = {};
@@ -91,13 +91,13 @@ class Schedule {
             }
             var chatId = req.params.chat_id;
             if(!chatId) {
-                logger.error("Schedule::getEvent() Invalid chat id");
+                Logger.error("Schedule::getEvent() Invalid chat id");
                 this.respondRequest(req, res, 400, this.getJsonError("Invalid chat id"));
                 return;
             }
             var eventId = req.params.event_id;
             if(!chatId) {
-                logger.error("Schedule::getEvent() Invalid event id");
+                Logger.error("Schedule::getEvent() Invalid event id");
                 this.respondRequest(req, res, 400, this.getJsonError("Invalid event id"));
                 return;
             }
@@ -111,7 +111,7 @@ class Schedule {
 
             this.respondRequest(req, res, 200, JSON.stringify(event));
         } catch(error) {
-            logger.error("Schedule::getEvent()", error);
+            Logger.error("Schedule::getEvent()", error);
             this.respondRequest(req, res, 500, this.getJsonError("Get scheduled event error"));
         }
     }
@@ -123,13 +123,13 @@ class Schedule {
             }
             var chatId = req.params.chat_id;
             if(!chatId) {
-                logger.error("Schedule::deleteEvent() Invalid chat id");
+                Logger.error("Schedule::deleteEvent() Invalid chat id");
                 this.respondRequest(req, res, 400, this.getJsonError("Invalid chat id"));
                 return;
             }
             var eventId = req.params.event_id;
             if(!chatId) {
-                logger.error("Schedule::deleteEvent() Invalid event id");
+                Logger.error("Schedule::deleteEvent() Invalid event id");
                 this.respondRequest(req, res, 400, this.getJsonError("Invalid event id"));
                 return;
             }
@@ -147,7 +147,7 @@ class Schedule {
             result["success"] = true;
             this.respondRequest(req, res, 200, JSON.stringify(result));
         } catch(error) {
-            logger.error("Schedule::deleteEvent()", error);
+            Logger.error("Schedule::deleteEvent()", error);
             this.respondRequest(req, res, 500, this.getJsonError("Delete scheduled event error"));
         }
     }
@@ -159,7 +159,7 @@ class Schedule {
             }
             var chatId = req.params.chat_id;
             if(!chatId) {
-                logger.error("Schedule::postEvent() Invalid chat id");
+                Logger.error("Schedule::postEvent() Invalid chat id");
                 this.respondRequest(req, res, 400, this.getJsonError("Invalid chat id"));
                 return;
             }
@@ -171,13 +171,13 @@ class Schedule {
             var isGroup = req.url.startsWith("/groupchats");
             var userId = body["user_id"];
             if(isGroup && (!userId || userId === "")) {
-                logger.error("Schedule::postEvent() Invalid user id: " + userId);
+                Logger.error("Schedule::postEvent() Invalid user id: " + userId);
                 this.respondRequest(req, res, 400, this.getJsonError("Invalid user id"));
                 return;
             }
             var command = body["command"];
             if(!command || command === "") {
-                logger.error("Schedule::postEvent() Invalid command: " + command);
+                Logger.error("Schedule::postEvent() Invalid command: " + command);
                 this.respondRequest(req, res, 400, this.getJsonError("Invalid command"));
                 return;
             }
@@ -194,7 +194,7 @@ class Schedule {
             } else if(times && times.length > 0) {
                 eventId = this.scheduleRepeatedEvent(chatId, isGroup, userId, command, times, days, excludes, answers);
             } else {
-                logger.error("Schedule::postEvent() Invalid date: " + date);
+                Logger.error("Schedule::postEvent() Invalid date: " + date);
                 this.respondRequest(req, res, 400, this.getJsonError("Invalid date"));
                 return;
             }
@@ -203,7 +203,7 @@ class Schedule {
             result["id"] = eventId;
             this.respondRequest(req, res, 201, JSON.stringify(result));
         } catch(error) {
-            logger.error("Schedule::postEvent()", error);
+            Logger.error("Schedule::postEvent()", error);
             this.respondRequest(req, res, 500, this.getJsonError("Schedule event error"));
         }
     }
@@ -215,7 +215,7 @@ class Schedule {
             }
             var chatId = req.params.chat_id;
             if(!chatId) {
-                logger.error("Schedule::postTrigger() Invalid chat id");
+                Logger.error("Schedule::postTrigger() Invalid chat id");
                 this.respondRequest(req, res, 400, this.getJsonError("Invalid chat id"));
                 return;
             }
@@ -233,13 +233,13 @@ class Schedule {
                 userId = chatId;
             }
             if(!userId || userId === "") {
-                logger.error("Schedule::postTrigger() Invalid user id: " + userId);
+                Logger.error("Schedule::postTrigger() Invalid user id: " + userId);
                 this.respondRequest(req, res, 400, this.getJsonError("Invalid user id"));
                 return;
             }
             var command = body["command"];
             if(!command || command === "") {
-                logger.error("Schedule::postTrigger() Invalid command: " + command);
+                Logger.error("Schedule::postTrigger() Invalid command: " + command);
                 this.respondRequest(req, res, 400, this.getJsonError("Invalid command"));
                 return;
             }
@@ -251,25 +251,25 @@ class Schedule {
 
             this.respondRequest(req, res, 200, JSON.stringify(result));
         } catch(error) {
-            logger.error("Schedule::postTrigger()", error);
+            Logger.error("Schedule::postTrigger()", error);
             this.respondRequest(req, res, 500, this.getJsonError("Trigger error"));
         }
     }
 
     checkRequest(req, res) {
         if(!req) {
-            logger.error("Schedule::checkRequest() Invalid request object");
+            Logger.error("Schedule::checkRequest() Invalid request object");
             return false;
         }
         if(!res) {
-            logger.error("Schedule::checkRequest() Invalid response object");
+            Logger.error("Schedule::checkRequest() Invalid response object");
             return false;
         }
         var requestText = "Schedule::" + req.method.toLowerCase() + "() << " + req.url + ":";
         if(req.body) {
-            logger.debug(requestText, req.body);
+            Logger.debug(requestText, req.body);
         } else {
-            logger.debug(requestText);
+            Logger.debug(requestText);
         }
         var params = req.params;
         if(!params) {
@@ -283,7 +283,7 @@ class Schedule {
         }
         var token = headers["authorization"];
         if(token && this.token !== token) {
-            logger.error("Schedule::checkRequest() Invalid schedule API token: " + token);
+            Logger.error("Schedule::checkRequest() Invalid schedule API token: " + token);
             this.respondRequest(req, res, 403, this.getJsonError("Invalid authorization token"));
             return false;
         }
@@ -291,7 +291,7 @@ class Schedule {
     }
 
     respondRequest(req, res, statusCode, body) {
-        logger.debug("Schedule::" + req.method.toLowerCase() + "() >> " + req.url + ": " + statusCode + ":", body);
+        Logger.debug("Schedule::" + req.method.toLowerCase() + "() >> " + req.url + ": " + statusCode + ":", body);
         if(res.status) {
             res.status(statusCode);
         } else {
@@ -301,7 +301,7 @@ class Schedule {
     }
 
     getScheduledEvent(chatId, isGroup, eventId) {
-        logger.debug("Schedule::getScheduledEvent() chatId: " + chatId + " isGroup: " + isGroup + " eventId: " + eventId);
+        Logger.debug("Schedule::getScheduledEvent() chatId: " + chatId + " isGroup: " + isGroup + " eventId: " + eventId);
         if(!this.schedule || !this.schedule[eventId]) {
             return null;
         }
@@ -313,7 +313,7 @@ class Schedule {
     }
 
     scheduleEvent(chatId, isGroup, userId, command, date, answers) {
-        logger.debug("Schedule::scheduleEvent() chatId: " + chatId + " isGroup: " + isGroup + " userId: " + userId
+        Logger.debug("Schedule::scheduleEvent() chatId: " + chatId + " isGroup: " + isGroup + " userId: " + userId
             + " command: " + command + " date: " + date + " answers:", answers);
 
         var event = {};
@@ -336,12 +336,12 @@ class Schedule {
         event["id"] = eventId;
 
         this.addToSchedule(event);
-        logger.debug("Schedule::scheduleEvent() Scheduled eventId: " + eventId);
+        Logger.debug("Schedule::scheduleEvent() Scheduled eventId: " + eventId);
         return eventId;
     }
 
     scheduleEventInMs(chatId, isGroup, userId, command, ms, answers) {
-        logger.debug("Schedule::scheduleEventInMs() chatId: " + chatId + " isGroup: " + isGroup + " userId: " + userId
+        Logger.debug("Schedule::scheduleEventInMs() chatId: " + chatId + " isGroup: " + isGroup + " userId: " + userId
             + " command: " + command + " ms: " + ms + " answers:", answers);
 
         var date = Moment(Date.now() + ms);
@@ -349,7 +349,7 @@ class Schedule {
     }
 
     scheduleRepeatedEvent(chatId, isGroup, userId, command, times, days, excludes, answers) {
-        logger.debug("Schedule::scheduleRepeatedEvent() chatId: " + chatId + " isGroup: " + isGroup + " userId: " + userId
+        Logger.debug("Schedule::scheduleRepeatedEvent() chatId: " + chatId + " isGroup: " + isGroup + " userId: " + userId
             + " command: " + command + " times: " + times + " days: " + days + " excludes: " + excludes
             + " answers:", answers);
 
@@ -379,21 +379,21 @@ class Schedule {
         event["id"] = eventId;
 
         this.addToSchedule(event);
-        logger.debug("Schedule::scheduleRepeatedEvent() Scheduled repeated eventId: " + eventId);
+        Logger.debug("Schedule::scheduleRepeatedEvent() Scheduled repeated eventId: " + eventId);
         return eventId;
     }
 
     executeEvent(eventId) {
-        logger.debug("Schedule::executeEvent() eventId: " + eventId);
+        Logger.debug("Schedule::executeEvent() eventId: " + eventId);
         var event = this.schedule[eventId];
         if(!event) {
-            logger.error("Schedule::executeEvent() No event found in schedule for id: " + eventId);
+            Logger.error("Schedule::executeEvent() No event found in schedule for id: " + eventId);
             return false;
         }
         var isGroup = event["is_groupchat"];
         var chatId = event["chat_id"];
         if(!chatId || chatId === "") {
-            logger.error("Schedule::executeEvent() Invalid chat id: " + chatId);
+            Logger.error("Schedule::executeEvent() Invalid chat id: " + chatId);
             return false;
         }
         var userId;
@@ -403,12 +403,12 @@ class Schedule {
             userId = chatId;
         }
         if(!userId || userId === "") {
-            logger.error("Schedule::executeEvent() Invalid user id: " + userId);
+            Logger.error("Schedule::executeEvent() Invalid user id: " + userId);
             return false;
         }
         var command = event["command"];
         if(!command || command === "") {
-            logger.error("Schedule::executeEvent() Invalid command: " + command);
+            Logger.error("Schedule::executeEvent() Invalid command: " + command);
             return false;
         }
         var answers = Answers.fromObject(event["answers"]);
@@ -428,11 +428,12 @@ class Schedule {
     }
 
     executeCommand(chatId, isGroup, userId, command, answers) {
-        logger.debug("Schedule::executeCommand() chatId: " + chatId + " isGroup: " + isGroup + " userId: " + userId
+        Logger.debug("Schedule::executeCommand() chatId: " + chatId + " isGroup: " + isGroup + " userId: " + userId
             + " command: " + command + " answers: ", answers);
 
         var callback = this.overrideCallbacks[command.toUpperCase()];
         if(callback) {
+            Logger.debug("Schedule::executeCommand() Override callback: " + callback);
             callback(chatId, isGroup, userId, answers);
             return;
         }
@@ -463,12 +464,12 @@ class Schedule {
         }
         var times = event["times"];
         if(!times || times.length == 0) {
-            logger.error("Schedule::calculateNextDate() Event has no valid time configuration", event);
+            Logger.error("Schedule::calculateNextDate() Event has no valid time configuration", event);
             return null;
         }
         var now = new Date();
         var checkMoment = Moment(now).utc();
-        logger.debug("Schedule::calculateNextDate() " + checkMoment.format("YYYY-MM-DDTHH:mm:ss") + "Z");
+        Logger.debug("Schedule::calculateNextDate() " + checkMoment.format("YYYY-MM-DDTHH:mm:ss") + "Z");
         if(this.checkDateForEvent(event, checkMoment)) {
             var year = checkMoment.year();
             var month = checkMoment.month();
@@ -480,7 +481,7 @@ class Schedule {
                 var minutes = timeSplit[1];
                 var seconds = timeSplit[2];
                 var candidateDate = Moment({y:year, M:month, d:day, h:hours, m:minutes, s:seconds}).utcOffset(0, true);
-                logger.debug("Schedule::calculateNextDate() Candidate date: " + candidateDate.format("YYYY-MM-DDTHH:mm:ss") + "Z");
+                Logger.debug("Schedule::calculateNextDate() Candidate date: " + candidateDate.format("YYYY-MM-DDTHH:mm:ss") + "Z");
                 var diff = candidateDate.diff(checkMoment);
                 // Check if time is in the future
                 if(diff >= 0) {
@@ -497,13 +498,13 @@ class Schedule {
 
     checkDateForEvent(event, checkMoment) {
         var checkDate = checkMoment.format("YYYY-MM-DD");
-        logger.debug("Schedule::checkDateForEvent() " + checkDate);
+        Logger.debug("Schedule::checkDateForEvent() " + checkDate);
         var excludes = event["exclude_dates"];
         if(excludes && excludes.length > 0) {
             for(var index in excludes) {
                 var exclude = excludes[index];
                 if(checkDate === exclude) {
-                    logger.debug("Schedule::checkDateForEvent() Excluded date: " + exclude);
+                    Logger.debug("Schedule::checkDateForEvent() Excluded date: " + exclude);
                     return false;
                 }
             }
@@ -514,11 +515,11 @@ class Schedule {
             for(var index in days) {
                 var day = days[index];
                 if(checkDay === day) {
-                    logger.debug("Schedule::checkDateForEvent() Accepted day of the week: " + day);
+                    Logger.debug("Schedule::checkDateForEvent() Accepted day of the week: " + day);
                     return true;
                 }
             }
-            logger.debug("Schedule::checkDateForEvent() Unaccepted day of the week: " + checkDay);
+            Logger.debug("Schedule::checkDateForEvent() Unaccepted day of the week: " + checkDay);
             return false;
         }
         return true;
@@ -527,12 +528,12 @@ class Schedule {
     setEventTimer(event) {
         var eventId = event["id"];
         if(!eventId || eventId === "") {
-            logger.error("Schedule::setEventTimer() Invalid event id: " + eventId);
+            Logger.error("Schedule::setEventTimer() Invalid event id: " + eventId);
             return false;
         }
-        logger.debug("Schedule::setEventTimer() eventId: " + eventId);
+        Logger.debug("Schedule::setEventTimer() eventId: " + eventId);
         if(this.timers[eventId]) {
-            logger.error("Schedule::setEventTimer() Timer already set for event: " + eventId);
+            Logger.error("Schedule::setEventTimer() Timer already set for event: " + eventId);
             return false;
         }
         var dateString;
@@ -543,18 +544,18 @@ class Schedule {
             dateString = this.calculateNextDate(event);
         }
         if(!dateString || dateString === "") {
-            logger.error("Schedule::setEventTimer() Invalid dateString: " + dateString);
+            Logger.error("Schedule::setEventTimer() Invalid dateString: " + dateString);
             return false;
         }
-        logger.debug("Schedule::setEventTimer() Setting event timer: eventId: " + eventId + " date: " + dateString);
+        Logger.debug("Schedule::setEventTimer() Setting event timer: eventId: " + eventId + " date: " + dateString);
         var date = Moment(dateString);
         var ms = date - Date.now();
         if(ms <= 0) {
-            logger.debug("Schedule::setEventTimer() Event past due by " + (-ms) + " milliseconds, executing now: eventId: " + eventId);
+            Logger.debug("Schedule::setEventTimer() Event past due by " + (-ms) + " milliseconds, executing now: eventId: " + eventId);
             this.executeEvent(eventId);
             return false;
         }
-        logger.debug("Schedule::setEventTimer() Event timer set: eventId: " + eventId + " ms: " + ms);
+        Logger.debug("Schedule::setEventTimer() Event timer set: eventId: " + eventId + " ms: " + ms);
         this.timers[eventId] = setTimeout(() => {
             this.executeEvent(eventId);
         }, ms);
@@ -562,10 +563,10 @@ class Schedule {
     }
 
     removeEventTimer(eventId) {
-        logger.debug("Schedule::removeEventTimer() eventId: " + eventId);
+        Logger.debug("Schedule::removeEventTimer() eventId: " + eventId);
         var timer = this.timers[eventId];
         if(!timer) {
-            logger.error("Schedule::removeEventTimer() No timer set for event: " + eventId);
+            Logger.error("Schedule::removeEventTimer() No timer set for event: " + eventId);
             return;
         }
         delete this.timers[eventId];
@@ -575,21 +576,21 @@ class Schedule {
     addToSchedule(event) {
         var eventId = event["id"];
         if(!eventId || eventId === "") {
-            logger.error("Schedule::addToSchedule() Invalid event id: " + eventId);
+            Logger.error("Schedule::addToSchedule() Invalid event id: " + eventId);
             return false;
         }
         if(this.schedule[eventId]) {
-            logger.error("Schedule::addToSchedule() Event already added to schedule: eventId: " + eventId + " event: ", event);
+            Logger.error("Schedule::addToSchedule() Event already added to schedule: eventId: " + eventId + " event: ", event);
             return false;
         }
-        logger.debug("Schedule::addToSchedule() eventId: " + eventId + " event: ", event);
+        Logger.debug("Schedule::addToSchedule() eventId: " + eventId + " event: ", event);
         this.schedule[eventId] = event;
         if(!this.setEventTimer(event)) {
             return true;
         }
         FileSystem.writeFileSync(this.scheduleFilePath, JSON.stringify(this.schedule), (error) => {
             if(error) {
-                logger.error("Schedule::addToSchedule() Unable to write schedule file", error);
+                Logger.error("Schedule::addToSchedule() Unable to write schedule file", error);
             }
         });
         return true;
@@ -597,22 +598,23 @@ class Schedule {
 
     removeFromSchedule(eventId) {
         if(!this.schedule[eventId]) {
-            logger.error("Schedule::removeFromSchedule() Event not found in schedule: eventId: " + eventId);
+            Logger.error("Schedule::removeFromSchedule() Event not found in schedule: eventId: " + eventId);
             return false;
         }
-        logger.debug("Schedule::removeFromSchedule() eventId: " + eventId);
+        Logger.debug("Schedule::removeFromSchedule() eventId: " + eventId);
         this.removeEventTimer(eventId);
         delete this.schedule[eventId];
         FileSystem.writeFileSync(this.scheduleFilePath, JSON.stringify(this.schedule), (error) => {
             if(error) {
-                logger.error("Schedule:removeFromSchedule() Unable to write schedule file", error);
+                Logger.error("Schedule:removeFromSchedule() Unable to write schedule file", error);
             }
         });
         return true;
     }
 
-    setOverrideCallback(command, callback) {
-        this.overrideCallbacks[command.toUpperCase()] = callback;
+    setOverrideCallback(trigger, callback) {
+        Logger.debug("Schedule::setOverrideCallback() trigger: " + trigger);
+        this.overrideCallbacks[trigger.toUpperCase()] = callback;
     }
 };
 
