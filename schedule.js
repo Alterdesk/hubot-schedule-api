@@ -443,11 +443,7 @@ class Schedule {
         textMessage.room = chatId;
         textMessage.text = command;
         textMessage.answers = answers;
-        if(this.robot.defaultRobotReceiver) {
-            this.robot.defaultRobotReceiver(textMessage);
-        } else {
-            this.robot.receive(textMessage);
-        }
+        this.robot.receive(textMessage);
     }
 
     getJsonError(errorText) {
