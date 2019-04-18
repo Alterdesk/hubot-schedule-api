@@ -10,8 +10,9 @@ const Log = require('log');
 var Logger = new Log(process.env.HUBOT_SCHEDULE_API_LOG_LEVEL || process.env.HUBOT_LOG_LEVEL || 'info');
 
 class Schedule {
-    constructor(robot) {
+    constructor(robot, control) {
         this.robot = robot;
+        this.control = control;
         this.timers = {};
         this.overrideCallbacks = {};
 
@@ -52,6 +53,13 @@ class Schedule {
             app = robot.router;
         }
 
+        app.get("/stats/configured", (req, res) => {this.getConfigured(req, res)});
+        app.get("/stats/connected", (req, res) => {this.getConnected(req, res)});
+        app.get("/stats/questionnaires", (req, res) => {this.getQuestionnaires(req, res)});
+
+        app.get("/actions/stop", (req, res) => {this.getStop(req, res)});
+        app.get("/actions/kill", (req, res) => {this.getKill(req, res)});
+
         app.get("/conversations/:chat_id/schedule/:event_id", (req, res) => {this.getEvent(req, res)});
         app.get("/groupchats/:chat_id/schedule/:event_id", (req, res) => {this.getEvent(req, res)});
         app.delete("/conversations/:chat_id/schedule/:event_id", (req, res) => {this.deleteEvent(req, res)});
@@ -82,6 +90,86 @@ class Schedule {
         if(!this.schedule) {
             this.schedule = {};
         }
+    }
+
+    getConfigured(req, res) {
+        try {
+            if(!this.checkRequest(req, res)) {
+                return;
+            }
+            var result = {};
+            result["result"] = this.control.acceptedCommands.length > 0;
+            this.respondRequest(req, res, 200, JSON.stringify(result));
+        } catch(error) {
+            Logger.error("Schedule::getConfigured()", error);
+            this.respondRequest(req, res, 500, this.getJsonError("Get configured event error"));
+        }
+    }
+
+    getConnected(req, res) {
+        try {
+            if(!this.checkRequest(req, res)) {
+               return;
+            }
+            var connected = false;
+            if(this.robot.adapter && typeof this.robot.adapter.connected === "boolean") {
+                connected = this.robot.adapter.connected;
+            }
+            var result = {};
+            result["result"] = connected;
+            this.respondRequest(req, res, 200, JSON.stringify(result));
+        } catch(error) {
+            Logger.error("Schedule::getConnected()", error);
+            this.respondRequest(req, res, 500, this.getJsonError("Get connected event error"));
+        }
+    }
+
+    getQuestionnaires(req, res) {
+        try {
+            if(!this.checkRequest(req, res)) {
+                return;
+            }
+            var questionnaires = this.control.getActiveQuestionnaires();
+            this.respondRequest(req, res, 200, JSON.stringify(questionnaires));
+        } catch(error) {
+            Logger.error("Schedule::getQuestionnaires()", error);
+            this.respondRequest(req, res, 500, this.getJsonError("Get questionnaires event error"));
+        }
+    }
+
+    getStop(req, res) {
+        var exitNow = false;
+        try {
+            if(!this.checkRequest(req, res)) {
+                return;
+            }
+            exitNow = this.control.armExitOnIdle(true);
+            var result = {};
+            result["result"] = true;
+            this.respondRequest(req, res, 200, JSON.stringify(result));
+        } catch(error) {
+            Logger.error("Schedule::getStop()", error);
+            this.respondRequest(req, res, 500, this.getJsonError("Get stop event error"));
+        }
+        if(exitNow) {
+            Logger.debug("Schedule::getStop() Is idle now, exiting");
+            process.exit(0);
+        }
+    }
+
+    getKill(req, res) {
+        try {
+            if(!this.checkRequest(req, res)) {
+                return;
+            }
+            var result = {};
+            result["result"] = true;
+            this.respondRequest(req, res, 200, JSON.stringify(result));
+        } catch(error) {
+            Logger.error("Schedule::getKill()", error);
+            this.respondRequest(req, res, 500, this.getJsonError("Get kill event error"));
+        }
+        process.exit(1);
     }
 
     getEvent(req, res) {
