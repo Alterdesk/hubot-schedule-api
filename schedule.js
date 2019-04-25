@@ -369,8 +369,18 @@ class Schedule {
             this.respondRequest(req, res, 400, this.getJsonError("Invalid request headers"));
             return false;
         }
+        if(!this.token || this.token === "") {
+            Logger.error("Schedule::checkRequest() No token configured!");
+            return true;
+        }
         var token = headers["authorization"];
-        if(token && this.token !== token) {
+        if(typeof token !== "string") {
+            Logger.error("Schedule::checkRequest() Invalid schedule API token: " + token);
+            this.respondRequest(req, res, 403, this.getJsonError("Invalid authorization token"));
+            return false;
+        }
+        token = token.replace("Bearer ", "");
+        if(this.token !== token) {
             Logger.error("Schedule::checkRequest() Invalid schedule API token: " + token);
             this.respondRequest(req, res, 403, this.getJsonError("Invalid authorization token"));
             return false;
