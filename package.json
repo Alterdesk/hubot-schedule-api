@@ -18,8 +18,8 @@
   "homepage": "https://github.com/Alterdesk/hubot-schedule-api#readme",
   "dependencies": {
     "hubot-questionnaire-framework": "git+ssh://git@npm.gitlab.alterdesk.com:other/hubot-questionnaire-framework.git",
+    "node-messenger-log": "git+ssh://git@npm.gitlab.alterdesk.com:zaurus/node-messenger-log.git",
     "hubot": "^2.19.0",
-    "log": "1.4.0",
     "express": "^3.21.2",
     "moment": "^2.20.1",
     "uuid": "^3.2.1"

@@ -1,13 +1,13 @@
 var Moment = require('moment');
 var UuidV1 = require('uuid/v1');
 const {Answers} = require('hubot-questionnaire-framework');
+const Logger = require('node-messenger-log');
 const {User, Message, TextMessage} = require('hubot');
 const FileSystem = require('fs');
 const Path = require('path');
-const Log = require('log');
 
 // Set the log instance
-var Logger = new Log(process.env.HUBOT_SCHEDULE_API_LOG_LEVEL || process.env.HUBOT_LOG_LEVEL || 'info');
+var Logger = new Logger(process.env.HUBOT_SCHEDULE_API_LOG_LEVEL || process.env.HUBOT_LOG_LEVEL || 'debug');
 
 class Schedule {
     constructor(robot, control) {
