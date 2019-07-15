@@ -283,3 +283,8 @@ HUBOT_SCHEDULE_API_CERT_PATH
 
 HUBOT_SCHEDULE_API_CERT_PASS
 * Passphrase for certificate, only with separate server
+
+## Generate own certificate
+```bash
+openssl req -x509 -newkey rsa:4096 -keyout privatekey.pem -out certificate.pem -days 365 -subj '/CN=localhost'
+```
