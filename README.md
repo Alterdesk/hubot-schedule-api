@@ -1,6 +1,10 @@
-# Hubot Schedule API
+# Hubot Schedule API(DEPRECATED)
 
 Library to trigger and schedule events and add a REST API to Hubot
+
+## Deprecated
+This project is deprecated and functionality was merged in [hubot-questionnaire-framework](https://github.com/Alterdesk/hubot-questionnaire-framework)
+in this [class](https://github.com/Alterdesk/hubot-questionnaire-framework/blob/master/src/bot-api.js)
 
 ## REST API
 
